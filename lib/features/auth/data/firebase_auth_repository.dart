@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,8 +10,24 @@ class FirebaseAuthRepository implements AuthRepository {
   FirebaseAuthRepository(this._prefs);
 
   static const _onboardingKey = 'home_os_onboarding_done';
+  static const _userCollections = <String>[
+    'homes',
+    'locations',
+    'assets',
+    'maintenance',
+    'reminders',
+    'providers',
+    'services',
+    'warranties',
+    'documents',
+    'expenses',
+    'family',
+    'activity',
+  ];
+
   final SharedPreferences _prefs;
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
@@ -70,8 +87,31 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount() async {
-    await _auth.currentUser?.delete();
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userRef = _db.collection('users').doc(user.uid);
+    for (final collection in _userCollections) {
+      await _deleteCollection(userRef.collection(collection));
+    }
+    await userRef.delete();
+    await user.delete();
     await _prefs.remove(_onboardingKey);
+  }
+
+  Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
+    while (true) {
+      final snapshot = await collection.limit(200).get();
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = _db.batch();
+      for (final document in snapshot.docs) {
+        batch.delete(document.reference);
+      }
+      await batch.commit();
+
+      if (snapshot.docs.length < 200) return;
+    }
   }
 
   LocalUser _mapUser(fb.User fbUser) {
