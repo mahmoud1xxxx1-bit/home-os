@@ -134,7 +134,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(48, 50),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: const TextStyle(fontWeight: FontWeight.w750),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
           side: BorderSide(color: scheme.outlineVariant),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
         ),
@@ -150,7 +150,7 @@ class AppTheme {
       chipTheme: ChipThemeData(
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .8)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w650),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: dark ? const Color(0xFF192326) : const Color(0xFFFFFEFB),
@@ -167,7 +167,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: dark ? const Color(0xFF253437) : const Color(0xFF23383A),
-        contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w650),
+        contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
