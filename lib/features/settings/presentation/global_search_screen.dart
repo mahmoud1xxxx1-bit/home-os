@@ -36,22 +36,22 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
       for (final asset in assets) {
         final name = asset.name.value(lang);
         if (name.toLowerCase().contains(term) || (asset.brand ?? '').toLowerCase().contains(term) || (asset.model ?? '').toLowerCase().contains(term)) {
-          hits.add(_SearchHit(type: 'asset', title: name, subtitle: lang == 'ar' ? 'أصل' : 'Asset', icon: Icons.devices_other_rounded, route: '/asset/${asset.id}'));
+          hits.add(_SearchHit(title: name, subtitle: lang == 'ar' ? 'أصل' : 'Asset', icon: Icons.devices_other_rounded, route: '/asset/${asset.id}'));
         }
       }
       for (final provider in providers) {
         if (provider.name.toLowerCase().contains(term) || provider.type.value(lang).toLowerCase().contains(term) || provider.phone.toLowerCase().contains(term)) {
-          hits.add(_SearchHit(type: 'provider', title: provider.name, subtitle: lang == 'ar' ? 'مقدم خدمة' : 'Provider', icon: Icons.contacts_rounded, route: '/manage/providers'));
+          hits.add(_SearchHit(title: provider.name, subtitle: lang == 'ar' ? 'مقدم خدمة' : 'Provider', icon: Icons.contacts_rounded, route: '/manage/providers'));
         }
       }
       for (final document in documents) {
         if (document.title.value(lang).toLowerCase().contains(term) || document.category.value(lang).toLowerCase().contains(term)) {
-          hits.add(_SearchHit(type: 'document', title: document.title.value(lang), subtitle: document.category.value(lang), icon: Icons.description_rounded, route: '/manage/documents'));
+          hits.add(_SearchHit(title: document.title.value(lang), subtitle: document.category.value(lang), icon: Icons.description_rounded, route: '/manage/documents'));
         }
       }
       for (final location in locations) {
         if (location.name.value(lang).toLowerCase().contains(term)) {
-          hits.add(_SearchHit(type: 'location', title: location.name.value(lang), subtitle: lang == 'ar' ? 'موقع أو غرفة' : 'Location or room', icon: Icons.room_preferences_rounded, route: '/house'));
+          hits.add(_SearchHit(title: location.name.value(lang), subtitle: lang == 'ar' ? 'موقع أو غرفة' : 'Location or room', icon: Icons.room_preferences_rounded, route: '/house'));
         }
       }
     }
@@ -79,7 +79,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.manage_search_rounded, color: Theme.of(context).colorScheme.primary),
-              title: Text(lang == 'ar' ? 'ابدأ بكتابة ما تبحث عنه' : 'Start typing what you are looking for', style: const TextStyle(fontWeight: FontWeight.w750)),
+              title: Text(lang == 'ar' ? 'ابدأ بكتابة ما تبحث عنه' : 'Start typing what you are looking for', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(lang == 'ar' ? 'ستظهر النتائج هنا مصنفة حسب نوعها.' : 'Results will appear here with clear categories.'),
             ),
           )
@@ -111,7 +111,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                     ),
                     child: Icon(hit.icon, color: Theme.of(context).colorScheme.primary),
                   ),
-                  title: Text(hit.title, style: const TextStyle(fontWeight: FontWeight.w750)),
+                  title: Text(hit.title, style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(hit.subtitle),
                   trailing: const Icon(Icons.chevron_right_rounded),
                 ),
@@ -123,8 +123,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
 }
 
 class _SearchHit {
-  const _SearchHit({required this.type, required this.title, required this.subtitle, required this.icon, required this.route});
-  final String type;
+  const _SearchHit({required this.title, required this.subtitle, required this.icon, required this.route});
   final String title;
   final String subtitle;
   final IconData icon;
