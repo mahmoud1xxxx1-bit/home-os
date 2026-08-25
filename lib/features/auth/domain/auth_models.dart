@@ -1,4 +1,4 @@
-enum AuthProviderType { email, google, apple }
+enum AuthProviderType { email, google, apple, anonymous }
 
 class LocalUser {
   const LocalUser({
