@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
@@ -53,7 +54,7 @@ class ActivityScreen extends ConsumerWidget {
 class _TimelineEntry extends StatelessWidget {
   const _TimelineEntry({required this.event, required this.lang, required this.isLast});
 
-  final dynamic event;
+  final ActivityEvent event;
   final String lang;
   final bool isLast;
 
