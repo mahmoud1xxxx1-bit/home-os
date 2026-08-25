@@ -75,7 +75,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                     ),
                     child: Icon(Icons.handyman_rounded, color: Theme.of(context).colorScheme.primary),
                   ),
-                  title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w750)),
+                  title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text('${record.type.value(lang)} • ${compactDate(record.date, lang)} • ${record.cost.toStringAsFixed(0)} SAR'),
                   trailing: IconButton(
                     tooltip: lang == 'ar' ? 'التفاصيل' : 'Details',
@@ -101,7 +101,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(record.description.value(lang), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w850)),
+              Text(record.description.value(lang), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               Text('${lang == 'ar' ? 'التكلفة' : 'Cost'}: ${record.cost.toStringAsFixed(0)} SAR'),
               const SizedBox(height: 6),
@@ -134,7 +134,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               alignment: AlignmentDirectional.centerStart,
               child: Text(
                 existing == null ? (lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance') : (lang == 'ar' ? 'تعديل الصيانة' : 'Edit maintenance'),
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w850),
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
             const SizedBox(height: 16),
@@ -148,7 +148,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 onPressed: () {
                   if (descCtrl.text.trim().isEmpty) return;
                   final record = MaintenanceRecord(
-                    id: existing?.id ?? 'm-${DateTime.now().microsecondsSinceEpoch}',
+                    id: existing?.id ?? 'm-${DateTime.now().millisecondsSinceEpoch}',
                     assetId: existing?.assetId ?? 'unassigned',
                     date: existing?.date ?? DateTime.now(),
                     type: existing?.type ?? const LocalizedText(ar: 'عام', en: 'General'),
