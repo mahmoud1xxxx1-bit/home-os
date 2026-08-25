@@ -30,7 +30,7 @@ class DocumentsScreen extends ConsumerWidget {
           child: ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.cloud_off_rounded, color: Theme.of(context).colorScheme.secondary),
-            title: Text(lang == 'ar' ? 'رفع الملفات مؤجل حاليًا' : 'File upload is currently deferred', style: const TextStyle(fontWeight: FontWeight.w750)),
+            title: Text(lang == 'ar' ? 'رفع الملفات مؤجل حاليًا' : 'File upload is currently deferred', style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(lang == 'ar' ? 'يمكنك حفظ بيانات المستند وتصنيفه الآن. رفع الصور والملفات سيتاح عند تفعيل التخزين السحابي.' : 'You can save document details and categories now. Image and file uploads will be enabled when cloud storage is activated.'),
           ),
         ),
@@ -59,7 +59,7 @@ class DocumentsScreen extends ConsumerWidget {
                     ),
                     child: Icon(Icons.description_rounded, color: Theme.of(context).colorScheme.primary),
                   ),
-                  title: Text(document.title.value(lang), style: const TextStyle(fontWeight: FontWeight.w750)),
+                  title: Text(document.title.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(document.category.value(lang)),
                   trailing: IconButton(
                     tooltip: lang == 'ar' ? 'حذف' : 'Delete',
@@ -105,7 +105,7 @@ class DocumentsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(lang == 'ar' ? 'إضافة بيانات مستند' : 'Add document details', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w850)),
+            Text(lang == 'ar' ? 'إضافة بيانات مستند' : 'Add document details', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             TextField(controller: title, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'اسم المستند' : 'Document name')),
             const SizedBox(height: 12),
