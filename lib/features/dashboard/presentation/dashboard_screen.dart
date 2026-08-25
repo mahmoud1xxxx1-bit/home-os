@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/app_models.dart';
 import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/utils/date_formatters.dart';
@@ -46,7 +47,7 @@ class DashboardScreen extends ConsumerWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: attention.length > 3 ? 3 : attention.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final reminder = attention[index];
                 final late = reminder.dueDate.isBefore(now);
