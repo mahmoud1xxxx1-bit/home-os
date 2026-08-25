@@ -51,7 +51,7 @@ class ProvidersScreen extends ConsumerWidget {
                     foregroundColor: Theme.of(context).colorScheme.primary,
                     child: Text(provider.name.isEmpty ? '?' : provider.name.characters.first.toUpperCase()),
                   ),
-                  title: Text(provider.name, style: const TextStyle(fontWeight: FontWeight.w750)),
+                  title: Text(provider.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text('${provider.type.value(lang)} • ${provider.phone}\n${lang == 'ar' ? 'الزيارات' : 'Visits'}: ${provider.visitCount}'),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
@@ -104,7 +104,7 @@ class ProvidersScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(provider == null ? (lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider') : (lang == 'ar' ? 'تعديل مقدم الخدمة' : 'Edit provider'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w850)),
+            Text(provider == null ? (lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider') : (lang == 'ar' ? 'تعديل مقدم الخدمة' : 'Edit provider'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             TextField(controller: nameCtrl, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'الاسم' : 'Name', prefixIcon: const Icon(Icons.person_outline_rounded))),
             const SizedBox(height: 12),
