@@ -15,7 +15,14 @@ class ProfileScreen extends ConsumerWidget {
     final user = auth.user;
     final lang = Localizations.localeOf(context).languageCode;
     final email = user?.email;
-    final isGuest = email == null || email.trim().isEmpty;
+    final providerName = user?.provider.name ?? 'anonymous';
+    final isGuest = providerName == 'anonymous' || email == null || email.trim().isEmpty;
+    final providerLabel = switch (providerName) {
+      'google' => 'Google',
+      'email' => lang == 'ar' ? 'بريد إلكتروني' : 'Email',
+      'apple' => 'Apple',
+      _ => lang == 'ar' ? 'ضيف' : 'Guest',
+    };
 
     return ResponsivePage(
       title: lang == 'ar' ? 'الحساب' : 'Account',
@@ -53,7 +60,7 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              StatusBadge(label: isGuest ? (lang == 'ar' ? 'ضيف' : 'Guest') : 'Google'),
+              StatusBadge(label: providerLabel),
             ],
           ),
         ),
@@ -66,8 +73,8 @@ class ProfileScreen extends ConsumerWidget {
               title: Text(lang == 'ar' ? 'أنت تستخدم Home OS كضيف' : 'You are using Home OS as a guest', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(
                 lang == 'ar'
-                    ? 'احتفظ بهذا الحساب على الجهاز الحالي. سنضيف لاحقًا ترقية سلسة إلى Google دون فقدان البيانات.'
-                    : 'Keep using this guest account on this device. A seamless Google upgrade without data loss will be added later.',
+                    ? 'بيانات هذا الحساب مرتبطة بمعرّف الضيف الحالي. قبل الإطلاق النهائي سنضيف ترقية آمنة إلى Google دون فقد البيانات.'
+                    : 'This data is tied to the current guest identity. Before production we will add a safe upgrade to Google without losing data.',
               ),
             ),
           ),
@@ -87,7 +94,7 @@ class ProfileScreen extends ConsumerWidget {
               ListTile(
                 leading: Icon(Icons.delete_forever_rounded, color: Theme.of(context).colorScheme.error),
                 title: Text(lang == 'ar' ? 'حذف الحساب' : 'Delete account', style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.error)),
-                subtitle: Text(lang == 'ar' ? 'إجراء خطير ولا يمكن التراجع عنه.' : 'A destructive action that cannot be undone.'),
+                subtitle: Text(lang == 'ar' ? 'يحذف الحساب وبيانات Home OS نهائيًا.' : 'Permanently deletes the account and Home OS data.'),
                 onTap: () => _deleteAccount(context, ref, lang),
               ),
             ],
@@ -124,8 +131,8 @@ class ProfileScreen extends ConsumerWidget {
             title: Text(lang == 'ar' ? 'حذف الحساب نهائيًا؟' : 'Delete account permanently?'),
             content: Text(
               lang == 'ar'
-                  ? 'سيتم حذف حساب تسجيل الدخول. بيانات Home OS المرتبطة بالحساب تحتاج معالجة حذف مستقلة قبل الإطلاق النهائي، لذلك لا نريد تنفيذ هذا بالخطأ.'
-                  : 'Your sign-in account will be deleted. Home OS cloud data requires a dedicated deletion flow before production, so this action must never happen accidentally.',
+                  ? 'سيتم حذف حساب تسجيل الدخول وجميع بيانات Home OS السحابية المرتبطة به، بما فيها الأصول والصيانة والتذكيرات والضمانات والمستندات والمصاريف. لا يمكن التراجع عن هذا الإجراء.'
+                  : 'Your sign-in account and all Home OS cloud data linked to it will be deleted, including assets, maintenance, reminders, warranties, documents and expenses. This cannot be undone.',
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
@@ -144,13 +151,13 @@ class ProfileScreen extends ConsumerWidget {
           context: context,
           builder: (context) => AlertDialog(
             title: Text(lang == 'ar' ? 'تأكيد أخير' : 'Final confirmation'),
-            content: Text(lang == 'ar' ? 'هل أنت متأكد تمامًا من حذف الحساب؟' : 'Are you absolutely sure you want to delete this account?'),
+            content: Text(lang == 'ar' ? 'هل أنت متأكد تمامًا؟ سيتم حذف الحساب وبياناته نهائيًا.' : 'Are you absolutely sure? The account and its data will be permanently deleted.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'احتفظ بحسابي' : 'Keep my account')),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
                 onPressed: () => Navigator.pop(context, true),
-                child: Text(lang == 'ar' ? 'حذف الحساب' : 'Delete account'),
+                child: Text(lang == 'ar' ? 'حذف الحساب والبيانات' : 'Delete account & data'),
               ),
             ],
           ),
