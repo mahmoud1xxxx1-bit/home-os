@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +17,11 @@ class FirestoreHomeStore
         MaintenanceRepository,
         ReminderRepository,
         ProviderRepository,
+        ServiceRepository,
+        WarrantyRepository,
         DocumentRepository,
         ExpenseRepository,
+        FamilyRepository,
         ActivityRepository {
   FirestoreHomeStore(this._prefs, this._uid) {
     _initListeners();
@@ -42,11 +45,10 @@ class FirestoreHomeStore
   List<FamilyMember> family = [];
   List<ActivityEvent> _activity = [];
 
-  List<StreamSubscription> _subs = [];
+  final List<StreamSubscription<dynamic>> _subs = [];
 
   void _initListeners() {
     final userDoc = _db.collection('users').doc(_uid);
-    
     _subs.add(userDoc.collection('homes').snapshots().listen((snap) {
       _homes = snap.docs.map((d) => _homeFromJson(d.data(), d.id)).toList();
     }));
@@ -86,12 +88,13 @@ class FirestoreHomeStore
   }
 
   void dispose() {
-    for (var sub in _subs) {
+    for (final sub in _subs) {
       sub.cancel();
     }
   }
 
-  DocumentReference _doc(String collection, String id) => _db.collection('users').doc(_uid).collection(collection).doc(id);
+  DocumentReference<Map<String, dynamic>> _doc(String collection, String id) =>
+      _db.collection('users').doc(_uid).collection(collection).doc(id);
 
   @override
   List<HomeProfile> watchHomes() => List.unmodifiable(_homes);
@@ -101,15 +104,50 @@ class FirestoreHomeStore
 
   @override
   LocationArea? locationById(String id) {
-    try { return _locations.firstWhere((l) => l.id == id); } catch (_) { return null; }
+    try {
+      return _locations.firstWhere((l) => l.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void upsertHome(HomeProfile home) {
+    _doc('homes', home.id).set(_homeToJson(home), SetOptions(merge: true));
+    _log('update', home.name);
+  }
+
+  @override
+  void deleteHome(String id) {
+    _doc('homes', id).delete();
+    _log('delete', const LocalizedText(ar: 'منزل', en: 'Home'));
+  }
+
+  @override
+  void upsertLocation(LocationArea location) {
+    _doc('locations', location.id).set(_locationToJson(location), SetOptions(merge: true));
+    _log('update', location.name);
+  }
+
+  @override
+  void deleteLocation(String id) {
+    _doc('locations', id).delete();
+    _log('delete', const LocalizedText(ar: 'موقع', en: 'Location'));
   }
 
   @override
   List<HomeAsset> watchAssets() => List.unmodifiable(_assets.where((asset) => asset.deletedAt == null));
 
   @override
+  List<HomeAsset> archivedAssets() => List.unmodifiable(_assets.where((asset) => asset.deletedAt != null));
+
+  @override
   HomeAsset? assetById(String id) {
-    try { return _assets.firstWhere((a) => a.id == id && a.deletedAt == null); } catch (_) { return null; }
+    try {
+      return _assets.firstWhere((a) => a.id == id && a.deletedAt == null);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -165,10 +203,114 @@ class FirestoreHomeStore
   List<ProviderContact> watchProviders() => List.unmodifiable(_providers);
 
   @override
+  void upsertProvider(ProviderContact provider) {
+    _doc('providers', provider.id).set(_providerToJson(provider), SetOptions(merge: true));
+    _log('update', LocalizedText(ar: provider.name, en: provider.name));
+  }
+
+  @override
+  void deleteProvider(String id) {
+    _doc('providers', id).delete();
+    _log('delete', const LocalizedText(ar: 'مقدم خدمة', en: 'Provider'));
+  }
+
+  @override
+  List<ServicePlan> watchServices() => List.unmodifiable(services);
+
+  @override
+  void upsertService(ServicePlan service) {
+    _doc('services', service.id).set(_serviceToJson(service), SetOptions(merge: true));
+    _log('update', service.name);
+  }
+
+  @override
+  void deleteService(String id) {
+    _doc('services', id).delete();
+    _log('delete', const LocalizedText(ar: 'خدمة', en: 'Service'));
+  }
+
+  @override
+  void markServiceVisitCompleted(String id) {
+    ServicePlan? current;
+    for (final service in services) {
+      if (service.id == id) current = service;
+    }
+    if (current == null) return;
+    final now = DateTime.now();
+    final updated = ServicePlan(
+      id: current.id,
+      name: current.name,
+      providerId: current.providerId,
+      phone: current.phone,
+      frequency: current.frequency,
+      cost: current.cost,
+      lastVisit: now,
+      nextVisit: now.add(const Duration(days: 7)),
+      notes: current.notes,
+    );
+    upsertService(updated);
+    _log('service completed', current.name);
+  }
+
+  @override
+  List<Warranty> watchWarranties() => List.unmodifiable(warranties);
+
+  @override
+  void upsertWarranty(Warranty warranty) {
+    _doc('warranties', warranty.id).set(_warrantyToJson(warranty), SetOptions(merge: true));
+    _log('update', LocalizedText(ar: warranty.provider, en: warranty.provider));
+  }
+
+  @override
+  void deleteWarranty(String id) {
+    _doc('warranties', id).delete();
+    _log('delete', const LocalizedText(ar: 'ضمان', en: 'Warranty'));
+  }
+
+  @override
   List<HomeDocument> watchDocuments() => List.unmodifiable(_documents);
 
   @override
+  void upsertDocument(HomeDocument document) {
+    _doc('documents', document.id).set(_documentToJson(document), SetOptions(merge: true));
+    _log('update', document.title);
+  }
+
+  @override
+  void deleteDocument(String id) {
+    _doc('documents', id).delete();
+    _log('delete', const LocalizedText(ar: 'مستند', en: 'Document'));
+  }
+
+  @override
   List<Expense> watchExpenses() => List.unmodifiable(_expenses);
+
+  @override
+  void upsertExpense(Expense expense) {
+    _doc('expenses', expense.id).set(_expenseToJson(expense), SetOptions(merge: true));
+    _log('expense added', expense.title);
+  }
+
+  @override
+  void deleteExpense(String id) {
+    _doc('expenses', id).delete();
+    _log('delete', const LocalizedText(ar: 'مصروف', en: 'Expense'));
+  }
+
+  @override
+  List<FamilyMember> watchFamily() => List.unmodifiable(family);
+
+  @override
+  void upsertFamilyMember(FamilyMember member) {
+    _doc('family', member.id).set(_familyToJson(member), SetOptions(merge: true));
+    _log('member change', LocalizedText(ar: member.name, en: member.name));
+  }
+
+  @override
+  void removeFamilyMember(String id) {
+    _doc('family', id).delete();
+    _log('member change', const LocalizedText(ar: 'عضو', en: 'Member'));
+  }
 
   @override
   List<ActivityEvent> watchActivity() => List.unmodifiable(_activity);
@@ -190,10 +332,9 @@ class FirestoreHomeStore
     addActivity(act);
   }
 
-  // --- Helpers ---
   Map<String, Object?> _textToJson(LocalizedText text) => {'ar': text.ar, 'en': text.en};
   LocalizedText _textFromJson(Map<String, dynamic> json) => LocalizedText(ar: json['ar'] as String? ?? '', en: json['en'] as String? ?? '');
-  
+
   Map<String, dynamic> _homeToJson(HomeProfile home) => {'name': _textToJson(home.name), 'type': _textToJson(home.type), 'createdAt': home.createdAt.toIso8601String()};
   HomeProfile _homeFromJson(Map<String, dynamic> json, String id) => HomeProfile(id: id, name: _textFromJson(json['name'] ?? {}), type: _textFromJson(json['type'] ?? {}), createdAt: DateTime.parse(json['createdAt']));
 
@@ -201,28 +342,57 @@ class FirestoreHomeStore
   LocationArea _locationFromJson(Map<String, dynamic> json, String id) => LocationArea(id: id, name: _textFromJson(json['name'] ?? {}), icon: json['icon']);
 
   Map<String, dynamic> _assetToJson(HomeAsset asset) => {
-    'name': _textToJson(asset.name), 'category': asset.category.name, 'locationId': asset.locationId,
-    'brand': asset.brand, 'model': asset.model, 'serialNumber': asset.serialNumber,
-    'purchaseDate': asset.purchaseDate?.toIso8601String(), 'purchasePrice': asset.purchasePrice,
-    'createdAt': asset.createdAt.toIso8601String(), 'updatedAt': asset.updatedAt.toIso8601String(), 'deletedAt': asset.deletedAt?.toIso8601String(),
-    'vehicleYear': asset.vehicle?.year, 'vehicleKm': asset.vehicle?.odometerKm,
-  };
+        'name': _textToJson(asset.name),
+        'category': asset.category.name,
+        'locationId': asset.locationId,
+        'brand': asset.brand,
+        'model': asset.model,
+        'serialNumber': asset.serialNumber,
+        'purchaseDate': asset.purchaseDate?.toIso8601String(),
+        'purchasePrice': asset.purchasePrice,
+        'createdAt': asset.createdAt.toIso8601String(),
+        'updatedAt': asset.updatedAt.toIso8601String(),
+        'deletedAt': asset.deletedAt?.toIso8601String(),
+        'vehicleYear': asset.vehicle?.year,
+        'vehicleKm': asset.vehicle?.odometerKm,
+      };
   HomeAsset _assetFromJson(Map<String, dynamic> json, String id) => HomeAsset(
-    id: id, name: _textFromJson(json['name'] ?? {}), category: AssetCategory.values.byName(json['category']),
-    locationId: json['locationId'], brand: json['brand'], model: json['model'], serialNumber: json['serialNumber'],
-    purchaseDate: json['purchaseDate'] != null ? DateTime.parse(json['purchaseDate']) : null, purchasePrice: (json['purchasePrice'] as num?)?.toDouble(),
-    createdAt: DateTime.parse(json['createdAt']), updatedAt: DateTime.parse(json['updatedAt']), deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt']) : null,
-    vehicle: json['vehicleYear'] != null ? VehicleDetails(make: json['brand'] ?? '', year: json['vehicleYear'], odometerKm: json['vehicleKm'] ?? 0) : null,
-  );
+        id: id,
+        name: _textFromJson(json['name'] ?? {}),
+        category: AssetCategory.values.byName(json['category']),
+        locationId: json['locationId'],
+        brand: json['brand'],
+        model: json['model'],
+        serialNumber: json['serialNumber'],
+        purchaseDate: json['purchaseDate'] != null ? DateTime.parse(json['purchaseDate']) : null,
+        purchasePrice: (json['purchasePrice'] as num?)?.toDouble(),
+        createdAt: DateTime.parse(json['createdAt']),
+        updatedAt: DateTime.parse(json['updatedAt']),
+        deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt']) : null,
+        vehicle: json['vehicleYear'] != null ? VehicleDetails(make: json['brand'] ?? '', year: json['vehicleYear'], odometerKm: json['vehicleKm'] ?? 0) : null,
+      );
 
   Map<String, dynamic> _maintenanceToJson(MaintenanceRecord rec) => {
-    'assetId': rec.assetId, 'date': rec.date.toIso8601String(), 'type': _textToJson(rec.type), 'description': _textToJson(rec.description),
-    'cost': rec.cost, 'providerId': rec.providerId, 'phone': rec.phone, 'nextDue': rec.nextDue?.toIso8601String()
-  };
+        'assetId': rec.assetId,
+        'date': rec.date.toIso8601String(),
+        'type': _textToJson(rec.type),
+        'description': _textToJson(rec.description),
+        'cost': rec.cost,
+        'providerId': rec.providerId,
+        'phone': rec.phone,
+        'nextDue': rec.nextDue?.toIso8601String(),
+      };
   MaintenanceRecord _maintenanceFromJson(Map<String, dynamic> json, String id) => MaintenanceRecord(
-    id: id, assetId: json['assetId'], date: DateTime.parse(json['date']), type: _textFromJson(json['type'] ?? {}), description: _textFromJson(json['description'] ?? {}),
-    cost: (json['cost'] as num?)?.toDouble() ?? 0.0, providerId: json['providerId'], phone: json['phone'], nextDue: json['nextDue'] != null ? DateTime.parse(json['nextDue']) : null,
-  );
+        id: id,
+        assetId: json['assetId'],
+        date: DateTime.parse(json['date']),
+        type: _textFromJson(json['type'] ?? {}),
+        description: _textFromJson(json['description'] ?? {}),
+        cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
+        providerId: json['providerId'],
+        phone: json['phone'],
+        nextDue: json['nextDue'] != null ? DateTime.parse(json['nextDue']) : null,
+      );
 
   Map<String, dynamic> _reminderToJson(Reminder r) => {'title': _textToJson(r.title), 'type': r.type.name, 'assetId': r.assetId, 'dueDate': r.dueDate.toIso8601String(), 'alertOffset': r.alertOffset.name};
   Reminder _reminderFromJson(Map<String, dynamic> json, String id) => Reminder(id: id, title: _textFromJson(json['title'] ?? {}), type: ReminderType.values.byName(json['type']), assetId: json['assetId'], dueDate: DateTime.parse(json['dueDate']), alertOffset: AlertOffset.values.byName(json['alertOffset']));
@@ -230,7 +400,26 @@ class FirestoreHomeStore
   Map<String, dynamic> _providerToJson(ProviderContact p) => {'name': p.name, 'type': _textToJson(p.type), 'phone': p.phone, 'whatsApp': p.whatsApp, 'visitCount': p.visitCount, 'totalPaid': p.totalPaid, 'linkedAssetIds': p.linkedAssetIds, 'lastVisit': p.lastVisit.toIso8601String()};
   ProviderContact _providerFromJson(Map<String, dynamic> json, String id) => ProviderContact(id: id, name: json['name'], type: _textFromJson(json['type'] ?? {}), phone: json['phone'], whatsApp: json['whatsApp'] ?? json['phone'], visitCount: json['visitCount'] ?? 0, totalPaid: (json['totalPaid'] as num?)?.toDouble() ?? 0, linkedAssetIds: List<String>.from(json['linkedAssetIds'] ?? []), lastVisit: json['lastVisit'] != null ? DateTime.parse(json['lastVisit']) : DateTime.now());
 
-  ServicePlan _serviceFromJson(Map<String, dynamic> json, String id) => ServicePlan(id: id, name: _textFromJson(json['name'] ?? {}), providerId: json['providerId'], phone: json['phone'], frequency: _textFromJson(json['frequency'] ?? {}), cost: (json['cost'] as num?)?.toDouble() ?? 0, lastVisit: DateTime.parse(json['lastVisit']), nextVisit: DateTime.parse(json['nextVisit']));
+  Map<String, dynamic> _serviceToJson(ServicePlan service) => {
+        'name': _textToJson(service.name),
+        'providerId': service.providerId,
+        'phone': service.phone,
+        'frequency': _textToJson(service.frequency),
+        'cost': service.cost,
+        'lastVisit': service.lastVisit.toIso8601String(),
+        'nextVisit': service.nextVisit.toIso8601String(),
+        'notes': service.notes == null ? null : _textToJson(service.notes!),
+      };
+  ServicePlan _serviceFromJson(Map<String, dynamic> json, String id) => ServicePlan(id: id, name: _textFromJson(json['name'] ?? {}), providerId: json['providerId'], phone: json['phone'], frequency: _textFromJson(json['frequency'] ?? {}), cost: (json['cost'] as num?)?.toDouble() ?? 0, lastVisit: DateTime.parse(json['lastVisit']), nextVisit: DateTime.parse(json['nextVisit']), notes: json['notes'] == null ? null : _textFromJson(json['notes']));
+
+  Map<String, dynamic> _warrantyToJson(Warranty warranty) => {
+        'assetId': warranty.assetId,
+        'start': warranty.start.toIso8601String(),
+        'end': warranty.end.toIso8601String(),
+        'provider': warranty.provider,
+        'number': warranty.number,
+        'status': warranty.status.name,
+      };
   Warranty _warrantyFromJson(Map<String, dynamic> json, String id) => Warranty(id: id, assetId: json['assetId'], start: DateTime.parse(json['start']), end: DateTime.parse(json['end']), provider: json['provider'], number: json['number'], status: WarrantyStatus.values.byName(json['status']));
 
   Map<String, dynamic> _documentToJson(HomeDocument d) => {'title': _textToJson(d.title), 'category': _textToJson(d.category), 'relatedAssetId': d.relatedAssetId, 'createdAt': d.createdAt.toIso8601String(), 'placeholder': d.placeholder};
@@ -239,6 +428,7 @@ class FirestoreHomeStore
   Map<String, dynamic> _expenseToJson(Expense e) => {'title': _textToJson(e.title), 'category': _textToJson(e.category), 'assetId': e.assetId, 'amount': e.amount, 'date': e.date.toIso8601String()};
   Expense _expenseFromJson(Map<String, dynamic> json, String id) => Expense(id: id, title: _textFromJson(json['title'] ?? {}), category: _textFromJson(json['category'] ?? {}), assetId: json['assetId'], amount: (json['amount'] as num).toDouble(), date: DateTime.parse(json['date']));
 
+  Map<String, dynamic> _familyToJson(FamilyMember member) => {'name': member.name, 'role': member.role.name, 'status': _textToJson(member.status)};
   FamilyMember _familyFromJson(Map<String, dynamic> json, String id) => FamilyMember(id: id, name: json['name'], role: FamilyRole.values.byName(json['role']), status: _textFromJson(json['status'] ?? {}));
 
   Map<String, dynamic> _activityToJson(ActivityEvent a) => {'actor': a.actor, 'type': _textToJson(a.type), 'entity': _textToJson(a.entity), 'timestamp': a.timestamp.toIso8601String(), 'description': _textToJson(a.description)};
