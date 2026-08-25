@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/auth_models.dart';
 import '../domain/auth_repository.dart';
@@ -49,11 +48,10 @@ class FirebaseAuthRepository implements AuthRepository {
       );
       final cred = await _auth.signInWithCredential(credential);
       return _mapUser(cred.user!);
-    } else {
-      // Anonymous
-      final cred = await _auth.signInAnonymously();
-      return _mapUser(cred.user!);
     }
+
+    final cred = await _auth.signInAnonymously();
+    return _mapUser(cred.user!);
   }
 
   @override
@@ -77,11 +75,17 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   LocalUser _mapUser(fb.User fbUser) {
+    final provider = fbUser.isAnonymous
+        ? AuthProviderType.anonymous
+        : fbUser.providerData.any((item) => item.providerId == 'google.com')
+            ? AuthProviderType.google
+            : AuthProviderType.email;
+
     return LocalUser(
       id: fbUser.uid,
       name: fbUser.displayName ?? (fbUser.isAnonymous ? 'Guest' : 'User'),
-      email: fbUser.email ?? (fbUser.isAnonymous ? 'guest@local.homeos' : ''),
-      provider: fbUser.isAnonymous ? AuthProviderType.apple : AuthProviderType.google, // Mocking provider type since we repurposed it
+      email: fbUser.email ?? '',
+      provider: provider,
       createdAt: fbUser.metadata.creationTime ?? DateTime.now(),
     );
   }
