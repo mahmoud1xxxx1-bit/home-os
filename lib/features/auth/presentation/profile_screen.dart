@@ -14,7 +14,8 @@ class ProfileScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
     final lang = Localizations.localeOf(context).languageCode;
-    final isGuest = user?.email == null || user!.email!.trim().isEmpty;
+    final email = user?.email;
+    final isGuest = email == null || email.trim().isEmpty;
 
     return ResponsivePage(
       title: lang == 'ar' ? 'الحساب' : 'Account',
@@ -46,13 +47,13 @@ class ProfileScreen extends ConsumerWidget {
                     Text(user?.name ?? (lang == 'ar' ? 'ضيف' : 'Guest'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
                     Text(
-                      isGuest ? (lang == 'ar' ? 'حساب ضيف' : 'Guest account') : (user?.email ?? ''),
+                      isGuest ? (lang == 'ar' ? 'حساب ضيف' : 'Guest account') : email,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
-              StatusBadge(label: isGuest ? (lang == 'ar' ? 'ضيف' : 'Guest') : (lang == 'ar' ? 'Google' : 'Google')),
+              StatusBadge(label: isGuest ? (lang == 'ar' ? 'ضيف' : 'Guest') : 'Google'),
             ],
           ),
         ),
@@ -62,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.secondary),
-              title: Text(lang == 'ar' ? 'أنت تستخدم Home OS كضيف' : 'You are using Home OS as a guest', style: const TextStyle(fontWeight: FontWeight.w750)),
+              title: Text(lang == 'ar' ? 'أنت تستخدم Home OS كضيف' : 'You are using Home OS as a guest', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(
                 lang == 'ar'
                     ? 'احتفظ بهذا الحساب على الجهاز الحالي. سنضيف لاحقًا ترقية سلسة إلى Google دون فقدان البيانات.'
@@ -78,7 +79,7 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.logout_rounded),
-                title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: const TextStyle(fontWeight: FontWeight.w750)),
+                title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(lang == 'ar' ? 'لن تُحذف بياناتك.' : 'Your data will not be deleted.'),
                 onTap: () => _logout(context, ref, lang),
               ),
