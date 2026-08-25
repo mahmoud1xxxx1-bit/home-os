@@ -41,11 +41,7 @@ class MoreScreen extends ConsumerWidget {
                 ('family', l10n.family, Icons.group_rounded),
                 ('reports', l10n.reports, Icons.bar_chart_rounded),
               ])
-                _NavTile(
-                  icon: item.$3,
-                  title: item.$2,
-                  onTap: () => context.push('/manage/${item.$1}'),
-                ),
+                _NavTile(icon: item.$3, title: item.$2, onTap: () => context.push('/manage/${item.$1}')),
             ],
           ),
         ),
@@ -282,7 +278,7 @@ class _NavTile extends StatelessWidget {
           ),
           child: Icon(icon, color: Theme.of(context).colorScheme.primary),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w650)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: onTap,
       );
@@ -308,7 +304,7 @@ class _SettingsGroup extends StatelessWidget {
                 for (var i = 0; i < items.length; i++) ...[
                   ListTile(
                     leading: Icon(items[i].icon),
-                    title: Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w650)),
+                    title: Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(items[i].subtitle),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: items[i].onTap,
