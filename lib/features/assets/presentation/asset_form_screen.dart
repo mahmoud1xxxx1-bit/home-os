@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../l10n/app_localizations.dart';
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AssetFormScreen extends ConsumerStatefulWidget {
   const AssetFormScreen({super.key});
@@ -16,15 +16,17 @@ class AssetFormScreen extends ConsumerStatefulWidget {
 }
 
 class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _brand = TextEditingController();
   final _model = TextEditingController();
   final _serial = TextEditingController();
   final _price = TextEditingController();
   final _notes = TextEditingController();
-  String _locationId = 'majlis';
+  String? _locationId;
   AssetCategory _category = AssetCategory.appliance;
   bool _more = false;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -41,96 +43,131 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
-    final store = ref.watch(localStoreProvider);
+    final locations = ref.watch(homeRepositoryProvider).watchLocations();
+    _locationId ??= locations.isEmpty ? null : locations.first.id;
+
     return ResponsivePage(
       title: l10n.addAsset,
       children: [
+        Text(
+          lang == 'ar' ? 'أضف الأساسيات الآن، ويمكنك إكمال التفاصيل لاحقًا.' : 'Add the essentials now. You can complete the details later.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
+        ),
+        const SizedBox(height: 16),
         AppCard(
-          child: Column(
-            children: [
-              TextField(controller: _name, decoration: InputDecoration(labelText: l10n.name)),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<AssetCategory>(
-                initialValue: _category,
-                decoration: InputDecoration(labelText: l10n.category),
-                items: AssetCategory.values
-                    .map((category) => DropdownMenuItem(value: category, child: Text(category.name)))
-                    .toList(),
-                onChanged: (value) => setState(() => _category = value ?? _category),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _locationId,
-                decoration: InputDecoration(labelText: l10n.location),
-                items: store
-                    .watchLocations()
-                    .map((location) => DropdownMenuItem(value: location.id, child: Text(location.name.value(lang))))
-                    .toList(),
-                onChanged: (value) => setState(() => _locationId = value ?? _locationId),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.image_rounded),
-                title: Text(l10n.optionalImage),
-                subtitle: Text(l10n.comingReady),
-              ),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _more = !_more),
-                  icon: Icon(_more ? Icons.expand_less_rounded : Icons.expand_more_rounded),
-                  label: Text(l10n.addMoreDetails),
-                ),
-              ),
-              if (_more) ...[
-                TextField(controller: _brand, decoration: InputDecoration(labelText: l10n.brand)),
-                const SizedBox(height: 12),
-                TextField(controller: _model, decoration: InputDecoration(labelText: l10n.model)),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: _serial, decoration: InputDecoration(labelText: l10n.serialNumber))),
-                    InfoTip(title: l10n.serialNumber, message: l10n.serialTip),
-                  ],
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _name,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(labelText: l10n.name, prefixIcon: const Icon(Icons.devices_other_rounded)),
+                  validator: (value) => value == null || value.trim().isEmpty ? (lang == 'ar' ? 'اكتب اسم الأصل' : 'Enter an asset name') : null,
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: _price, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.purchasePrice)),
+                DropdownButtonFormField<AssetCategory>(
+                  initialValue: _category,
+                  decoration: InputDecoration(labelText: l10n.category, prefixIcon: const Icon(Icons.category_outlined)),
+                  items: AssetCategory.values.map((category) => DropdownMenuItem(value: category, child: Text(category.name))).toList(),
+                  onChanged: (value) => setState(() => _category = value ?? _category),
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.notes)),
+                if (locations.isEmpty)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.info_outline_rounded),
+                    title: Text(lang == 'ar' ? 'لا يوجد موقع بعد' : 'No location yet'),
+                    subtitle: Text(lang == 'ar' ? 'يمكنك إضافة الموقع من قسم المنزل ثم العودة.' : 'Add a location from Home, then return here.'),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: _locationId,
+                    decoration: InputDecoration(labelText: l10n.location, prefixIcon: const Icon(Icons.room_outlined)),
+                    items: locations.map((location) => DropdownMenuItem(value: location.id, child: Text(location.name.value(lang)))).toList(),
+                    onChanged: (value) => setState(() => _locationId = value),
+                  ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.image_outlined),
+                  title: Text(l10n.optionalImage),
+                  subtitle: Text(lang == 'ar' ? 'رفع الملفات سيتاح بعد تفعيل التخزين السحابي.' : 'File upload will be available after cloud storage is enabled.'),
+                  trailing: const Icon(Icons.lock_clock_outlined),
+                ),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _more = !_more),
+                    icon: Icon(_more ? Icons.expand_less_rounded : Icons.expand_more_rounded),
+                    label: Text(l10n.addMoreDetails),
+                  ),
+                ),
+                if (_more) ...[
+                  TextField(controller: _brand, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: l10n.brand)),
+                  const SizedBox(height: 12),
+                  TextField(controller: _model, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: l10n.model)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: _serial, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: l10n.serialNumber))),
+                      InfoTip(title: l10n.serialNumber, message: l10n.serialTip),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(controller: _price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: l10n.purchasePrice)),
+                  const SizedBox(height: 12),
+                  TextField(controller: _notes, maxLines: 3, textInputAction: TextInputAction.done, decoration: InputDecoration(labelText: l10n.notes)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _saving || locations.isEmpty ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.check_rounded),
+                    label: Text(l10n.save),
+                  ),
+                ),
               ],
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    final now = DateTime.now();
-                    final id = 'asset-${now.microsecondsSinceEpoch}';
-                    store.addAsset(
-                      HomeAsset(
-                        id: id,
-                        name: LocalizedText(ar: _name.text.trim().isEmpty ? 'جهاز جديد' : _name.text.trim(), en: _name.text.trim().isEmpty ? 'New asset' : _name.text.trim()),
-                        category: _category,
-                        locationId: _locationId,
-                        brand: _brand.text.trim().isEmpty ? null : _brand.text.trim(),
-                        model: _model.text.trim().isEmpty ? null : _model.text.trim(),
-                        serialNumber: _serial.text.trim().isEmpty ? null : _serial.text.trim(),
-                        purchasePrice: double.tryParse(_price.text),
-                        notes: _notes.text.trim().isEmpty ? null : LocalizedText(ar: _notes.text.trim(), en: _notes.text.trim()),
-                        createdAt: now,
-                        updatedAt: now,
-                      ),
-                    );
-                    ref.invalidate(assetsProvider);
-                    context.go('/asset/$id');
-                  },
-                  child: Text(l10n.save),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || _locationId == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final now = DateTime.now();
+      final id = 'asset-${now.microsecondsSinceEpoch}';
+      ref.read(assetRepositoryProvider).addAsset(
+            HomeAsset(
+              id: id,
+              name: LocalizedText(ar: _name.text.trim(), en: _name.text.trim()),
+              category: _category,
+              locationId: _locationId!,
+              brand: _brand.text.trim().isEmpty ? null : _brand.text.trim(),
+              model: _model.text.trim().isEmpty ? null : _model.text.trim(),
+              serialNumber: _serial.text.trim().isEmpty ? null : _serial.text.trim(),
+              purchasePrice: double.tryParse(_price.text),
+              notes: _notes.text.trim().isEmpty ? null : LocalizedText(ar: _notes.text.trim(), en: _notes.text.trim()),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      ref.invalidate(assetsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تمت إضافة الأصل' : 'Asset added')),
+        );
+        context.go('/asset/$id');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
