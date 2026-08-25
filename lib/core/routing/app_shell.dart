@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../widgets/quick_add_sheet.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -23,6 +22,8 @@ class AppShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 900;
+        final extendedRail = constraints.maxWidth >= 1180;
+
         return Scaffold(
           body: Row(
             children: [
@@ -30,13 +31,16 @@ class AppShell extends StatelessWidget {
                 NavigationRail(
                   selectedIndex: navigationShell.currentIndex,
                   onDestinationSelected: _goBranch,
-                  extended: constraints.maxWidth >= 1180,
-                  labelType: constraints.maxWidth >= 1180
-                      ? NavigationRailLabelType.none
-                      : NavigationRailLabelType.all,
+                  extended: extendedRail,
+                  labelType: extendedRail ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                  groupAlignment: -.78,
                   destinations: [
                     for (final item in destinations)
-                      NavigationRailDestination(icon: Icon(item.icon), label: Text(item.label)),
+                      NavigationRailDestination(
+                        icon: Icon(item.icon),
+                        selectedIcon: Icon(item.selectedIcon),
+                        label: Text(item.label),
+                      ),
                   ],
                 ),
               Expanded(child: navigationShell),
@@ -49,14 +53,13 @@ class AppShell extends StatelessWidget {
                   onDestinationSelected: _goBranch,
                   destinations: [
                     for (final item in destinations)
-                      NavigationDestination(icon: Icon(item.icon), label: item.label),
+                      NavigationDestination(
+                        icon: Icon(item.icon),
+                        selectedIcon: Icon(item.selectedIcon),
+                        label: item.label,
+                      ),
                   ],
                 ),
-          floatingActionButton: FloatingActionButton(
-            tooltip: l10n.quickAdd,
-            onPressed: () => showQuickAddSheet(context),
-            child: const Icon(Icons.add_rounded),
-          ),
         );
       },
     );
@@ -71,8 +74,9 @@ class AppShell extends StatelessWidget {
 }
 
 class _Destination {
-  const _Destination(this.label, this.icon);
+  const _Destination(this.label, this.icon, [IconData? selectedIcon]) : selectedIcon = selectedIcon ?? icon;
 
   final String label;
   final IconData icon;
+  final IconData selectedIcon;
 }
