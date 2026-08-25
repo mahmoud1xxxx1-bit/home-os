@@ -16,6 +16,14 @@ final familyRepositoryProvider = Provider<FamilyRepository>(
   (ref) => _LocalFamilyRepository(ref.watch(localStoreProvider)),
 );
 
+final homesProvider = Provider<List<HomeProfile>>(
+  (ref) => ref.watch(homeRepositoryProvider).watchHomes(),
+);
+
+final locationsProvider = Provider<List<LocationArea>>(
+  (ref) => ref.watch(homeRepositoryProvider).watchLocations(),
+);
+
 final servicesProvider = Provider<List<ServicePlan>>(
   (ref) => ref.watch(serviceRepositoryProvider).watchServices(),
 );
