@@ -152,11 +152,17 @@ class MoreScreen extends ConsumerWidget {
               Text(lang == 'ar' ? 'اختر المظهر' : 'Choose appearance', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               for (final mode in ThemeMode.values)
-                RadioListTile<ThemeMode>(
-                  value: mode,
-                  groupValue: current,
+                ListTile(
+                  leading: Icon(
+                    mode == ThemeMode.light
+                        ? Icons.light_mode_outlined
+                        : mode == ThemeMode.dark
+                            ? Icons.dark_mode_outlined
+                            : Icons.brightness_auto_outlined,
+                  ),
                   title: Text(_themeLabel(mode, lang)),
-                  onChanged: (value) => Navigator.pop(context, value),
+                  trailing: mode == current ? Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary) : null,
+                  onTap: () => Navigator.pop(context, mode),
                 ),
             ],
           ),
