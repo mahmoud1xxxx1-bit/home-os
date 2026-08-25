@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
@@ -37,6 +38,8 @@ class ActivityScreen extends ConsumerWidget {
             message: lang == 'ar'
                 ? 'عندما تضيف أصلًا أو تسجل صيانة أو تغيّر شيئًا مهمًا سيظهر هنا.'
                 : 'When you add an asset, record maintenance or make an important change, it will appear here.',
+            actionLabel: lang == 'ar' ? 'العودة للرئيسية' : 'Back to home',
+            onAction: () => context.go('/'),
           )
         else
           for (var index = 0; index < activity.length; index++)
