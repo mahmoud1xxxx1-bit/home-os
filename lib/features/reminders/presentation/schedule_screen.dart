@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
@@ -56,6 +57,8 @@ class ScheduleScreen extends ConsumerWidget {
             message: lang == 'ar'
                 ? 'أضف أول تذكير للصيانة أو الضمان أو موعد مهم للمنزل.'
                 : 'Add your first reminder for maintenance, warranty or an important home date.',
+            actionLabel: lang == 'ar' ? 'إضافة تذكير' : 'Add reminder',
+            onAction: () => context.push('/manage/reminders'),
           )
         else ...[
           if (overdue.isNotEmpty) ...[
