@@ -85,7 +85,7 @@ class ExpensesScreen extends ConsumerWidget {
                     ),
                     child: Icon(Icons.payments_rounded, color: Theme.of(context).colorScheme.secondary),
                   ),
-                  title: Text(expense.title.value(lang), style: const TextStyle(fontWeight: FontWeight.w750)),
+                  title: Text(expense.title.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(expense.category.value(lang)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -138,7 +138,7 @@ class ExpensesScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(lang == 'ar' ? 'إضافة مصروف' : 'Add expense', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w850)),
+            Text(lang == 'ar' ? 'إضافة مصروف' : 'Add expense', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             TextField(controller: title, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'اسم المصروف' : 'Expense name')),
             const SizedBox(height: 12),
