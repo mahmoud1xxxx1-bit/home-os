@@ -138,8 +138,8 @@ class ServicesScreen extends ConsumerWidget {
                   final service = ServicePlan(
                     id: existing?.id ?? 'service-${now.microsecondsSinceEpoch}',
                     name: LocalizedText(ar: nameCtrl.text.trim(), en: nameCtrl.text.trim()),
-                    providerId: existing?.providerId,
-                    phone: existing?.phone,
+                    providerId: existing?.providerId ?? '',
+                    phone: existing?.phone ?? '',
                     frequency: LocalizedText(ar: frequencyCtrl.text.trim().isEmpty ? 'شهريًا' : frequencyCtrl.text.trim(), en: frequencyCtrl.text.trim().isEmpty ? 'Monthly' : frequencyCtrl.text.trim()),
                     cost: double.tryParse(costCtrl.text) ?? 0,
                     lastVisit: existing?.lastVisit ?? now,
