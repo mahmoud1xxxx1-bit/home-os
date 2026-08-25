@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app.dart';
 import 'core/services/extended_repository_providers.dart';
 import 'core/services/firestore_home_store.dart';
+import 'core/services/firestore_revision_provider.dart';
 import 'core/services/local_repositories.dart';
 import 'features/auth/data/firebase_auth_repository.dart';
 import 'features/auth/data/local_auth_repository.dart';
@@ -59,6 +60,54 @@ Future<void> main() async {
         expenseRepositoryProvider.overrideWith((ref) => ref.watch(firestoreStoreProvider)),
         familyRepositoryProvider.overrideWith((ref) => ref.watch(firestoreStoreProvider)),
         activityRepositoryProvider.overrideWith((ref) => ref.watch(firestoreStoreProvider)),
+        homesProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchHomes();
+        }),
+        locationsProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchLocations();
+        }),
+        assetsProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchAssets();
+        }),
+        maintenanceProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchMaintenance();
+        }),
+        remindersProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchReminders();
+        }),
+        providersProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchProviders();
+        }),
+        servicesProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchServices();
+        }),
+        warrantiesProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchWarranties();
+        }),
+        documentsProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchDocuments();
+        }),
+        expensesProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchExpenses();
+        }),
+        familyProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchFamily();
+        }),
+        activityProvider.overrideWith((ref) {
+          ref.watch(firestoreRevisionProvider);
+          return ref.watch(firestoreStoreProvider).watchActivity();
+        }),
       ],
       child: const HomeOsApp(),
     ),
