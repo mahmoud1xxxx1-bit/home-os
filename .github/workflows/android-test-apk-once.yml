@@ -1,4 +1,4 @@
-# Rebuild with verified valid launcher PNG resource.
+# Rebuild the requested phone-test APK with verified launcher resources.
 name: Home OS One-Shot Test APK
 
 on:
@@ -15,6 +15,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Regenerate Android launcher icons
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          source = Image.open('assets/branding/home_os_icon.png').convert('RGB')
+          targets = {
+              'mipmap-mdpi': 48,
+              'mipmap-hdpi': 72,
+              'mipmap-xhdpi': 96,
+              'mipmap-xxhdpi': 144,
+              'mipmap-xxxhdpi': 192,
+          }
+          for folder, size in targets.items():
+              target = Path('android/app/src/main/res') / folder / 'ic_launcher.png'
+              target.parent.mkdir(parents=True, exist_ok=True)
+              source.resize((size, size), Image.Resampling.LANCZOS).save(target, format='PNG', optimize=True)
+              check = Image.open(target)
+              check.verify()
+              print(f'{target}: {size}x{size} valid PNG')
+          PY
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -97,7 +121,7 @@ jobs:
               sys.exit('Firebase config has no Web OAuth client required by Google Sign-In.')
           if signing_sha1 not in android_hashes:
               known = ', '.join(sorted(android_hashes)) or 'none'
-              print(f'::warning::GitHub Firebase JSON is stale. Registered Android SHA-1 values in the stored JSON: {known}. The user has already added the stable test SHA-1 in Firebase Console, so continue building the test APK.')
+              print(f'::warning::GitHub Firebase JSON is stale. Registered Android SHA-1 values in the stored JSON: {known}. The stable test SHA-1 is already registered in Firebase Console, so continue building the test APK.')
           else:
               print('GOOGLE_OAUTH_MATCH=true')
           PY
