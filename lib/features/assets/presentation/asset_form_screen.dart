@@ -202,21 +202,19 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
   String _categoryLabel(AssetCategory category, String lang) {
     if (lang != 'ar') {
       return switch (category) {
+        AssetCategory.appliance => 'Appliance',
         AssetCategory.hvac => 'HVAC',
         AssetCategory.kitchen => 'Kitchen',
-        AssetCategory.appliance => 'Appliance',
-        AssetCategory.electronics => 'Electronics',
-        AssetCategory.plumbing => 'Plumbing',
+        AssetCategory.outdoor => 'Outdoor',
         AssetCategory.vehicle => 'Vehicle',
         AssetCategory.other => 'Other',
       };
     }
     return switch (category) {
+      AssetCategory.appliance => 'أجهزة منزلية',
       AssetCategory.hvac => 'تكييف وتهوية',
       AssetCategory.kitchen => 'المطبخ',
-      AssetCategory.appliance => 'أجهزة منزلية',
-      AssetCategory.electronics => 'إلكترونيات',
-      AssetCategory.plumbing => 'سباكة',
+      AssetCategory.outdoor => 'خارجي وحديقة',
       AssetCategory.vehicle => 'مركبة',
       AssetCategory.other => 'أخرى',
     };
