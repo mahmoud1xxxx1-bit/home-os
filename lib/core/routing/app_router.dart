@@ -61,12 +61,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/upgrade',
         builder: (context, state) => PaywallScreen(reason: state.uri.queryParameters['reason']),
       ),
-      GoRoute(path: '/manage/maintenance', builder: (context, state) => const MaintenanceScreen()),
+      GoRoute(
+        path: '/manage/maintenance',
+        builder: (context, state) => MaintenanceScreen(assetId: state.uri.queryParameters['assetId']),
+      ),
       GoRoute(path: '/manage/services', builder: (context, state) => const ServicesScreen()),
       GoRoute(path: '/manage/providers', builder: (context, state) => const ProvidersScreen()),
-      GoRoute(path: '/manage/warranties', builder: (context, state) => const WarrantiesScreen()),
-      GoRoute(path: '/manage/documents', builder: (context, state) => const DocumentsScreen()),
-      GoRoute(path: '/manage/expenses', builder: (context, state) => const ExpensesScreen()),
+      GoRoute(
+        path: '/manage/warranties',
+        builder: (context, state) => WarrantiesScreen(assetId: state.uri.queryParameters['assetId']),
+      ),
+      GoRoute(
+        path: '/manage/documents',
+        builder: (context, state) => DocumentsScreen(assetId: state.uri.queryParameters['assetId']),
+      ),
+      GoRoute(
+        path: '/manage/expenses',
+        builder: (context, state) => ExpensesScreen(assetId: state.uri.queryParameters['assetId']),
+      ),
       GoRoute(path: '/manage/family', builder: (context, state) => const FamilyScreen()),
       GoRoute(
         path: '/manage/:feature',
