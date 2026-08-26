@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
 import 'billing_contract.dart';
 import 'entitlements.dart';
@@ -63,6 +65,8 @@ final storeSubscriptionControllerProvider =
 class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  GooglePlayPurchaseDetails? _androidUnlimitedPurchase;
+  GooglePlayPurchaseDetails? _androidMultiHomePurchase;
   bool _disposed = false;
 
   @override
@@ -131,7 +135,7 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
   }
 
   Future<void> purchase(SubscriptionTier tier) async {
-    if (tier == SubscriptionTier.free) return;
+    if (tier == SubscriptionTier.free || tier == state.tier) return;
     final product = state.productFor(tier);
     if (!state.storeAvailable || product == null) {
       state = state.copyWith(errorCode: 'product_unavailable');
@@ -140,9 +144,25 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
 
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _iap.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: product),
-      );
+      PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+
+      // Google Play requires the old purchase when replacing a subscription.
+      // Without this, a user could accidentally end up with two active plans.
+      if (!kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android &&
+          tier == SubscriptionTier.multiHome &&
+          state.tier == SubscriptionTier.unlimited &&
+          _androidUnlimitedPurchase != null) {
+        purchaseParam = GooglePlayPurchaseParam(
+          productDetails: product,
+          changeSubscriptionParam: ChangeSubscriptionParam(
+            oldPurchaseDetails: _androidUnlimitedPurchase!,
+            replacementMode: ReplacementMode.withTimeProration,
+          ),
+        );
+      }
+
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (_) {
       if (_disposed) return;
       state = state.copyWith(isLoading: false, errorCode: 'purchase_failed');
@@ -175,6 +195,14 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
         case PurchaseStatus.restored:
           final tier = _tierForProduct(purchase.productID);
           if (_rank(tier) > _rank(highestTier)) highestTier = tier;
+
+          if (purchase is GooglePlayPurchaseDetails) {
+            if (purchase.productID == SubscriptionProductIds.unlimitedMonthly) {
+              _androidUnlimitedPurchase = purchase;
+            } else if (purchase.productID == SubscriptionProductIds.multiHomeMonthly) {
+              _androidMultiHomePurchase = purchase;
+            }
+          }
           break;
         case PurchaseStatus.error:
           errorCode = 'purchase_failed';
