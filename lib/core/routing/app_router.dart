@@ -51,7 +51,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [GoRoute(path: '/more', builder: (context, state) => const SettingsHubScreen())]),
         ],
       ),
-      GoRoute(path: '/asset/new', builder: (context, state) => const AssetFormScreen()),
+      GoRoute(
+        path: '/asset/new',
+        builder: (context, state) => AssetFormScreen(initialLocationId: state.uri.queryParameters['locationId']),
+      ),
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
       GoRoute(path: '/search', builder: (context, state) => const GlobalSearchScreen()),
       GoRoute(
