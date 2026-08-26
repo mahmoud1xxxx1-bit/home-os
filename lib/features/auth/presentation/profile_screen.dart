@@ -62,7 +62,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(user?.name ?? (lang == 'ar' ? 'ضيف' : 'Guest'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
                     Text(
-                      isGuest ? (lang == 'ar' ? 'حساب ضيف غير محفوظ' : 'Unprotected guest account') : (email ?? ''),
+                      isGuest ? (lang == 'ar' ? 'حساب ضيف غير محفوظ' : 'Unprotected guest account') : email,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
@@ -193,8 +193,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(lang == 'ar' ? 'ربط مع Google' : 'Link Google')),
               ],
             ),
-          ) ??
-          false;
+          ) ?? false;
       if (protect && mounted) await _upgradeGuest(lang);
       return;
     }
@@ -211,8 +210,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out')),
             ],
           ),
-        ) ??
-        false;
+        ) ?? false;
     if (!ok) return;
 
     try {
@@ -244,8 +242,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ],
           ),
-        ) ??
-        false;
+        ) ?? false;
     if (!first || !mounted) return;
 
     final second = await showDialog<bool>(
@@ -262,8 +259,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ],
           ),
-        ) ??
-        false;
+        ) ?? false;
     if (!second) return;
 
     try {
