@@ -68,7 +68,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   Future<LocalUser> _signInOrUpgradeWithGoogle() async {
     final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) throw Exception('Google Sign In aborted');
+    if (googleUser == null) throw StateError('GOOGLE_SIGN_IN_CANCELLED');
 
     final googleAuth = await googleUser.authentication;
     final credential = fb.GoogleAuthProvider.credential(
@@ -86,9 +86,7 @@ class FirebaseAuthRepository implements AuthRepository {
             error.code == 'email-already-in-use' ||
             error.code == 'provider-already-linked') {
           await _googleSignIn.signOut();
-          throw StateError(
-            'GUEST_UPGRADE_ACCOUNT_EXISTS',
-          );
+          throw StateError('GUEST_UPGRADE_ACCOUNT_EXISTS');
         }
         rethrow;
       }
