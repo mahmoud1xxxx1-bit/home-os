@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
@@ -216,7 +217,7 @@ class _LocationCard extends StatelessWidget {
   const _LocationCard({required this.name, required this.assets, required this.lang, required this.onAddAsset, required this.onAssetTap});
 
   final String name;
-  final List<dynamic> assets;
+  final List<HomeAsset> assets;
   final String lang;
   final VoidCallback onAddAsset;
   final ValueChanged<String> onAssetTap;
@@ -262,14 +263,14 @@ class _LocationCard extends StatelessWidget {
                   ActionChip(
                     avatar: Icon(asset.vehicle == null ? Icons.devices_other_rounded : Icons.directions_car_rounded),
                     label: Text(asset.name.value(lang)),
-                    onPressed: () => onAssetTap(asset.id as String),
+                    onPressed: () => onAssetTap(asset.id),
                   ),
               ],
             ),
           const SizedBox(height: 12),
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(onPressed: onAddAsset, icon: const Icon(Icons.add_rounded), label: Text(lang == 'ar' ? 'إضافة أصل لهذه الغرفة' : 'Add asset to this room')),
+            child: TextButton.icon(onPressed: onAddAsset, icon: const Icon(Icons.add_rounded), label: Text(lang == 'ar' ? 'إضافة أصل' : 'Add asset')),
           ),
         ],
       ),
