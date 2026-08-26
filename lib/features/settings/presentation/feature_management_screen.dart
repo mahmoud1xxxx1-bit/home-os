@@ -29,7 +29,13 @@ class FeatureManagementScreen extends ConsumerWidget {
           ),
       ],
       children: [
-        Text(_intro(lang), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5)),
+        Text(
+          _intro(lang),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+        ),
         const SizedBox(height: 14),
         _body(context, ref, lang),
       ],
@@ -37,12 +43,24 @@ class FeatureManagementScreen extends ConsumerWidget {
   }
 
   String _intro(String lang) => switch (feature) {
-        'homes' => lang == 'ar' ? 'أدر المنازل المرتبطة بحسابك. المنزل الثاني وما بعده يحتاج إلى Multi‑Home.' : 'Manage homes linked to your account. A second home requires Multi‑Home.',
-        'locations' => lang == 'ar' ? 'قسّم المنزل إلى غرف أو مواقع لتعرف مكان كل أصل.' : 'Create rooms or locations so every asset has a clear place.',
-        'assets' => lang == 'ar' ? 'جميع الأجهزة والممتلكات التي تتابعها داخل Home OS.' : 'All devices and belongings tracked in Home OS.',
-        'reminders' => lang == 'ar' ? 'تابع المواعيد القادمة والمتأخرة من مكان واحد.' : 'Keep upcoming and overdue reminders in one place.',
-        'reports' => lang == 'ar' ? 'ملخص بسيط يساعدك على فهم تكلفة منزلك وما يحتاج انتباهك.' : 'A simple summary of home costs and items that need attention.',
-        'help' => lang == 'ar' ? 'شرح سريع لأهم أقسام Home OS وكيف تستخدمها.' : 'Quick guidance for the main Home OS sections.',
+        'homes' => lang == 'ar'
+            ? 'أدر المنازل المرتبطة بحسابك. المنزل الثاني وما بعده يحتاج إلى Multi‑Home.'
+            : 'Manage homes linked to your account. A second home requires Multi‑Home.',
+        'locations' => lang == 'ar'
+            ? 'قسّم المنزل إلى غرف أو مواقع لتعرف مكان كل أصل.'
+            : 'Create rooms or locations so every asset has a clear place.',
+        'assets' => lang == 'ar'
+            ? 'جميع الأجهزة والممتلكات التي تتابعها داخل Home OS.'
+            : 'All devices and belongings tracked in Home OS.',
+        'reminders' => lang == 'ar'
+            ? 'تابع المواعيد القادمة والمتأخرة من مكان واحد.'
+            : 'Keep upcoming and overdue reminders in one place.',
+        'reports' => lang == 'ar'
+            ? 'ملخص بسيط يساعدك على فهم تكلفة منزلك وما يحتاج انتباهك.'
+            : 'A simple summary of home costs and items that need attention.',
+        'help' => lang == 'ar'
+            ? 'شرح سريع لأهم أقسام Home OS وكيف تستخدمها.'
+            : 'Quick guidance for the main Home OS sections.',
         _ => lang == 'ar' ? 'إدارة هذا القسم.' : 'Manage this section.',
       };
 
@@ -53,7 +71,12 @@ class FeatureManagementScreen extends ConsumerWidget {
         'reminders' => _reminders(context, ref, lang),
         'reports' => _reports(context, ref, lang),
         'help' => _help(context, lang),
-        _ => AppCard(child: ListTile(leading: const Icon(Icons.info_outline_rounded), title: Text(lang == 'ar' ? 'هذا القسم له شاشة مخصصة' : 'This section has a dedicated screen'))),
+        _ => AppCard(
+            child: ListTile(
+              leading: const Icon(Icons.info_outline_rounded),
+              title: Text(lang == 'ar' ? 'هذا القسم له شاشة مخصصة' : 'This section has a dedicated screen'),
+            ),
+          ),
       };
 
   Widget _homes(BuildContext context, WidgetRef ref, String lang) {
@@ -75,7 +98,11 @@ class FeatureManagementScreen extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.workspace_premium_outlined),
             title: Text(lang == 'ar' ? 'إضافة منزل آخر' : 'Add another home'),
-            subtitle: Text(lang == 'ar' ? 'تحتاج باقة Multi‑Home بسعر 35$ شهريًا.' : r'Requires Multi‑Home at $35/month.'),
+            subtitle: Text(
+              lang == 'ar'
+                  ? r'تحتاج باقة Multi‑Home بسعر 35$ شهريًا.'
+                  : r'Requires Multi‑Home at $35/month.',
+            ),
             trailing: FilledButton.tonal(
               onPressed: () => _addHome(context, ref, lang),
               child: Text(lang == 'ar' ? 'إضافة' : 'Add'),
@@ -157,9 +184,13 @@ class FeatureManagementScreen extends ConsumerWidget {
       return EmptyState(
         icon: Icons.devices_other_rounded,
         title: lang == 'ar' ? 'لا توجد أصول' : 'No assets yet',
-        message: lang == 'ar' ? 'ابدأ بإضافة جهاز أو سيارة أو أي شيء تريد متابعته.' : 'Add a device, vehicle or anything you want to track.',
+        message: lang == 'ar'
+            ? 'ابدأ بإضافة جهاز أو سيارة أو أي شيء تريد متابعته.'
+            : 'Add a device, vehicle or anything you want to track.',
         actionLabel: lang == 'ar' ? 'إضافة أصل' : 'Add asset',
-        onAction: () => context.push('/asset/new'),
+        onAction: () {
+          if (ensureAssetAccess(context, ref)) context.push('/asset/new');
+        },
       );
     }
     return Column(
@@ -174,7 +205,11 @@ class FeatureManagementScreen extends ConsumerWidget {
                 leading: Icon(asset.vehicle == null ? Icons.devices_other_rounded : Icons.directions_car_rounded),
                 title: Text(asset.name.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(asset.vehicle == null ? asset.category.name : '${asset.vehicle!.odometerKm} km'),
-                trailing: IconButton(tooltip: lang == 'ar' ? 'أرشفة' : 'Archive', icon: const Icon(Icons.archive_outlined), onPressed: () => _archiveAsset(context, ref, asset, lang)),
+                trailing: IconButton(
+                  tooltip: lang == 'ar' ? 'أرشفة' : 'Archive',
+                  icon: const Icon(Icons.archive_outlined),
+                  onPressed: () => _archiveAsset(context, ref, asset, lang),
+                ),
               ),
             ),
           ),
@@ -220,9 +255,18 @@ class FeatureManagementScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (overdue.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'متأخرة' : 'Overdue'), ...overdue.map((r) => _reminderCard(context, r, lang, danger: true))],
-        if (upcoming.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'قادمة' : 'Upcoming'), ...upcoming.map((r) => _reminderCard(context, r, lang))],
-        if (completed.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'مكتملة' : 'Completed'), ...completed.map((r) => _reminderCard(context, r, lang))],
+        if (overdue.isNotEmpty) ...[
+          SectionTitle(lang == 'ar' ? 'متأخرة' : 'Overdue'),
+          ...overdue.map((r) => _reminderCard(context, r, lang, danger: true)),
+        ],
+        if (upcoming.isNotEmpty) ...[
+          SectionTitle(lang == 'ar' ? 'قادمة' : 'Upcoming'),
+          ...upcoming.map((r) => _reminderCard(context, r, lang)),
+        ],
+        if (completed.isNotEmpty) ...[
+          SectionTitle(lang == 'ar' ? 'مكتملة' : 'Completed'),
+          ...completed.map((r) => _reminderCard(context, r, lang)),
+        ],
       ],
     );
   }
@@ -232,7 +276,10 @@ class FeatureManagementScreen extends ConsumerWidget {
         child: AppCard(
           child: ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.notifications_active_rounded, color: danger ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary),
+            leading: Icon(
+              Icons.notifications_active_rounded,
+              color: danger ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
+            ),
             title: Text(reminder.title.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text('${reminder.dueDate.year}/${reminder.dueDate.month}/${reminder.dueDate.day}'),
           ),
@@ -266,18 +313,55 @@ class FeatureManagementScreen extends ConsumerWidget {
 
   Widget _help(BuildContext context, String lang) {
     final topics = [
-      (Icons.devices_other_rounded, lang == 'ar' ? 'إضافة أصل' : 'Adding an asset', lang == 'ar' ? 'أضف الجهاز وحدد موقعه ثم أكمل التفاصيل عند الحاجة.' : 'Add the asset, choose its location, then add optional details when needed.'),
-      (Icons.notifications_active_rounded, lang == 'ar' ? 'التذكيرات' : 'Reminders', lang == 'ar' ? 'استخدمها لمواعيد الصيانة والانتهاء والخدمات.' : 'Use reminders for maintenance, expiries and service dates.'),
-      (Icons.verified_rounded, lang == 'ar' ? 'الضمانات' : 'Warranties', lang == 'ar' ? 'سجّل الضمان قبل أن تنسى تاريخ انتهائه.' : 'Save warranty details before the expiry date is forgotten.'),
-      (Icons.group_rounded, lang == 'ar' ? 'العائلة' : 'Family', lang == 'ar' ? 'حدد دور كل شخص قبل منحه صلاحية الإدارة.' : 'Choose a role before granting someone management access.'),
-      (Icons.privacy_tip_outlined, lang == 'ar' ? 'الخصوصية' : 'Privacy', lang == 'ar' ? 'بيانات كل مستخدم معزولة بحسابه في Firebase.' : 'Each user’s data is isolated by their Firebase account.'),
+      (
+        Icons.devices_other_rounded,
+        lang == 'ar' ? 'إضافة أصل' : 'Adding an asset',
+        lang == 'ar'
+            ? 'أضف الجهاز وحدد موقعه ثم أكمل التفاصيل عند الحاجة.'
+            : 'Add the asset, choose its location, then add optional details when needed.'
+      ),
+      (
+        Icons.notifications_active_rounded,
+        lang == 'ar' ? 'التذكيرات' : 'Reminders',
+        lang == 'ar'
+            ? 'استخدمها لمواعيد الصيانة والانتهاء والخدمات.'
+            : 'Use reminders for maintenance, expiries and service dates.'
+      ),
+      (
+        Icons.verified_rounded,
+        lang == 'ar' ? 'الضمانات' : 'Warranties',
+        lang == 'ar'
+            ? 'سجّل الضمان قبل أن تنسى تاريخ انتهائه.'
+            : 'Save warranty details before the expiry date is forgotten.'
+      ),
+      (
+        Icons.group_rounded,
+        lang == 'ar' ? 'العائلة' : 'Family',
+        lang == 'ar'
+            ? 'حدد دور كل شخص قبل منحه صلاحية الإدارة.'
+            : 'Choose a role before granting someone management access.'
+      ),
+      (
+        Icons.privacy_tip_outlined,
+        lang == 'ar' ? 'الخصوصية' : 'Privacy',
+        lang == 'ar'
+            ? 'بيانات كل مستخدم معزولة بحسابه في Firebase.'
+            : 'Each user’s data is isolated by their Firebase account.'
+      ),
     ];
     return Column(
       children: [
         for (final topic in topics)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: AppCard(child: ListTile(contentPadding: EdgeInsets.zero, leading: Icon(topic.$1, color: Theme.of(context).colorScheme.primary), title: Text(topic.$2, style: const TextStyle(fontWeight: FontWeight.w700)), subtitle: Text(topic.$3))),
+            child: AppCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(topic.$1, color: Theme.of(context).colorScheme.primary),
+                title: Text(topic.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(topic.$3),
+              ),
+            ),
           ),
       ],
     );
@@ -285,7 +369,7 @@ class FeatureManagementScreen extends ConsumerWidget {
 
   Future<void> _add(BuildContext context, WidgetRef ref, String lang) async {
     if (feature == 'assets') {
-      context.push('/asset/new');
+      if (ensureAssetAccess(context, ref)) context.push('/asset/new');
     } else if (feature == 'reminders') {
       _addReminder(context, ref, lang);
     } else if (feature == 'homes') {
@@ -297,18 +381,39 @@ class FeatureManagementScreen extends ConsumerWidget {
 
   Future<void> _addHome(BuildContext context, WidgetRef ref, String lang) async {
     if (!ensureHomeAccess(context, ref)) return;
-    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'إضافة منزل' : 'Add home');
-    if (value == null || value.trim().isEmpty) return;
+    final value = await _nameDialog(
+      context,
+      lang,
+      title: lang == 'ar' ? 'إضافة منزل' : 'Add home',
+    );
+    if (!context.mounted || value == null || value.trim().isEmpty) return;
     if (!ensureHomeAccess(context, ref)) return;
     final now = DateTime.now();
-    ref.read(homeRepositoryProvider).upsertHome(HomeProfile(id: 'home-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), type: const LocalizedText(ar: 'منزل', en: 'Home'), createdAt: now));
+    ref.read(homeRepositoryProvider).upsertHome(
+          HomeProfile(
+            id: 'home-${now.microsecondsSinceEpoch}',
+            name: LocalizedText(ar: value, en: value),
+            type: const LocalizedText(ar: 'منزل', en: 'Home'),
+            createdAt: now,
+          ),
+        );
   }
 
   Future<void> _addLocation(BuildContext context, WidgetRef ref, String lang) async {
-    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'إضافة موقع' : 'Add location');
-    if (value == null || value.trim().isEmpty) return;
+    final value = await _nameDialog(
+      context,
+      lang,
+      title: lang == 'ar' ? 'إضافة موقع' : 'Add location',
+    );
+    if (!context.mounted || value == null || value.trim().isEmpty) return;
     final now = DateTime.now();
-    ref.read(homeRepositoryProvider).upsertLocation(LocationArea(id: 'location-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), icon: 'room'));
+    ref.read(homeRepositoryProvider).upsertLocation(
+          LocationArea(
+            id: 'location-${now.microsecondsSinceEpoch}',
+            name: LocalizedText(ar: value, en: value),
+            icon: 'room',
+          ),
+        );
   }
 
   void _addReminder(BuildContext context, WidgetRef ref, String lang) {
@@ -324,9 +429,16 @@ class FeatureManagementScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(lang == 'ar' ? 'إضافة تذكير' : 'Add reminder', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              lang == 'ar' ? 'إضافة تذكير' : 'Add reminder',
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 16),
-            TextField(controller: controller, autofocus: true, decoration: InputDecoration(labelText: lang == 'ar' ? 'عنوان التذكير' : 'Reminder title')),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(labelText: lang == 'ar' ? 'عنوان التذكير' : 'Reminder title'),
+            ),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -338,7 +450,16 @@ class FeatureManagementScreen extends ConsumerWidget {
                     return;
                   }
                   final now = DateTime.now();
-                  ref.read(reminderRepositoryProvider).addReminder(Reminder(id: 'reminder-${now.microsecondsSinceEpoch}', title: LocalizedText(ar: controller.text.trim(), en: controller.text.trim()), type: ReminderType.oneTime, assetId: null, dueDate: now.add(const Duration(days: 1)), alertOffset: AlertOffset.oneDay));
+                  ref.read(reminderRepositoryProvider).addReminder(
+                        Reminder(
+                          id: 'reminder-${now.microsecondsSinceEpoch}',
+                          title: LocalizedText(ar: controller.text.trim(), en: controller.text.trim()),
+                          type: ReminderType.oneTime,
+                          assetId: null,
+                          dueDate: now.add(const Duration(days: 1)),
+                          alertOffset: AlertOffset.oneDay,
+                        ),
+                      );
                   ref.invalidate(remindersProvider);
                   Navigator.pop(ctx);
                 },
@@ -352,39 +473,95 @@ class FeatureManagementScreen extends ConsumerWidget {
   }
 
   Future<void> _editHome(BuildContext context, WidgetRef ref, HomeProfile home, String lang) async {
-    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'تعديل المنزل' : 'Edit home', initial: home.name.value(lang));
-    if (value == null || value.trim().isEmpty) return;
-    ref.read(homeRepositoryProvider).upsertHome(HomeProfile(id: home.id, name: LocalizedText(ar: value, en: value), type: home.type, createdAt: home.createdAt));
+    final value = await _nameDialog(
+      context,
+      lang,
+      title: lang == 'ar' ? 'تعديل المنزل' : 'Edit home',
+      initial: home.name.value(lang),
+    );
+    if (!context.mounted || value == null || value.trim().isEmpty) return;
+    ref.read(homeRepositoryProvider).upsertHome(
+          HomeProfile(
+            id: home.id,
+            name: LocalizedText(ar: value, en: value),
+            type: home.type,
+            createdAt: home.createdAt,
+          ),
+        );
   }
 
   Future<void> _editLocation(BuildContext context, WidgetRef ref, LocationArea location, String lang) async {
-    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'تعديل الموقع' : 'Edit location', initial: location.name.value(lang));
-    if (value == null || value.trim().isEmpty) return;
-    ref.read(homeRepositoryProvider).upsertLocation(LocationArea(id: location.id, name: LocalizedText(ar: value, en: value), icon: location.icon));
+    final value = await _nameDialog(
+      context,
+      lang,
+      title: lang == 'ar' ? 'تعديل الموقع' : 'Edit location',
+      initial: location.name.value(lang),
+    );
+    if (!context.mounted || value == null || value.trim().isEmpty) return;
+    ref.read(homeRepositoryProvider).upsertLocation(
+          LocationArea(
+            id: location.id,
+            name: LocalizedText(ar: value, en: value),
+            icon: location.icon,
+          ),
+        );
   }
 
   Future<void> _deleteHome(BuildContext context, WidgetRef ref, HomeProfile home, String lang) async {
-    if (!await _confirm(context, lang == 'ar' ? 'حذف المنزل؟' : 'Delete home?', lang == 'ar' ? 'سيتم حذف ${home.name.value(lang)}. تأكد أنه لا يحتوي بيانات تحتاجها.' : '${home.name.value(lang)} will be removed. Make sure you no longer need its data.', lang)) return;
+    if (!await _confirm(
+      context,
+      lang == 'ar' ? 'حذف المنزل؟' : 'Delete home?',
+      lang == 'ar'
+          ? 'سيتم حذف ${home.name.value(lang)}. تأكد أنه لا يحتوي بيانات تحتاجها.'
+          : '${home.name.value(lang)} will be removed. Make sure you no longer need its data.',
+      lang,
+    )) {
+      return;
+    }
+    if (!context.mounted) return;
     ref.read(homeRepositoryProvider).deleteHome(home.id);
   }
 
   Future<void> _deleteLocation(BuildContext context, WidgetRef ref, LocationArea location, String lang) async {
-    if (!await _confirm(context, lang == 'ar' ? 'حذف الموقع؟' : 'Delete location?', lang == 'ar' ? 'تأكد من نقل الأصول المرتبطة بهذا الموقع أولًا.' : 'Move any linked assets before deleting this location.', lang)) return;
+    if (!await _confirm(
+      context,
+      lang == 'ar' ? 'حذف الموقع؟' : 'Delete location?',
+      lang == 'ar'
+          ? 'تأكد من نقل الأصول المرتبطة بهذا الموقع أولًا.'
+          : 'Move any linked assets before deleting this location.',
+      lang,
+    )) {
+      return;
+    }
+    if (!context.mounted) return;
     ref.read(homeRepositoryProvider).deleteLocation(location.id);
   }
 
   void _archiveAsset(BuildContext context, WidgetRef ref, HomeAsset asset, String lang) {
     final removed = ref.read(assetRepositoryProvider).softDeleteAsset(asset.id);
     ref.invalidate(assetsProvider);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'), action: SnackBarAction(label: lang == 'ar' ? 'تراجع' : 'Undo', onPressed: () {
-      if (removed != null) {
-        ref.read(assetRepositoryProvider).restoreAsset(removed);
-        ref.invalidate(assetsProvider);
-      }
-    })));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'),
+        action: SnackBarAction(
+          label: lang == 'ar' ? 'تراجع' : 'Undo',
+          onPressed: () {
+            if (removed != null) {
+              ref.read(assetRepositoryProvider).restoreAsset(removed);
+              ref.invalidate(assetsProvider);
+            }
+          },
+        ),
+      ),
+    );
   }
 
-  Future<String?> _nameDialog(BuildContext context, String lang, {required String title, String? initial}) {
+  Future<String?> _nameDialog(
+    BuildContext context,
+    String lang, {
+    required String title,
+    String? initial,
+  }) {
     final controller = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
@@ -392,8 +569,14 @@ class FeatureManagementScreen extends ConsumerWidget {
         title: Text(title),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text(lang == 'ar' ? 'حفظ' : 'Save')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
+          ),
         ],
       ),
     );
@@ -406,11 +589,18 @@ class FeatureManagementScreen extends ConsumerWidget {
           title: Text(title),
           content: Text(message),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'تأكيد' : 'Confirm')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(lang == 'ar' ? 'تأكيد' : 'Confirm'),
+            ),
           ],
         ),
-      ) ?? false;
+      ) ??
+      false;
 
   String _title(String lang) => switch (feature) {
         'homes' => lang == 'ar' ? 'المنازل' : 'Homes',
@@ -425,6 +615,7 @@ class FeatureManagementScreen extends ConsumerWidget {
 
 class _ReportCard extends StatelessWidget {
   const _ReportCard({required this.icon, required this.label, required this.value});
+
   final IconData icon;
   final String label;
   final String value;
