@@ -30,15 +30,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               padding: const EdgeInsets.all(24),
               shrinkWrap: true,
               children: [
-                Container(
-                  width: 86,
-                  height: 86,
-                  margin: const EdgeInsets.symmetric(horizontal: 180),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [scheme.primaryContainer, scheme.secondaryContainer]),
-                    borderRadius: BorderRadius.circular(28),
+                Center(
+                  child: Container(
+                    width: 86,
+                    height: 86,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [scheme.primaryContainer, scheme.secondaryContainer]),
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Icon(Icons.home_work_rounded, size: 44, color: scheme.primary),
                   ),
-                  child: Icon(Icons.home_work_rounded, size: 44, color: scheme.primary),
                 ),
                 const SizedBox(height: 20),
                 Text('Home OS', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
@@ -89,7 +90,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           children: [
                             const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                             const SizedBox(width: 10),
-                            Text(lang == 'ar' ? 'جارٍ تجهيز حسابك...' : 'Preparing your account...'),
+                            Flexible(child: Text(lang == 'ar' ? 'جارٍ تجهيز حسابك...' : 'Preparing your account...')),
                           ],
                         ),
                       ],
