@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/firestore_revision_provider.dart';
 import '../services/local_repositories.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -14,6 +15,8 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
+    final syncState = ref.watch(firestoreRevisionProvider);
+    final firstSyncPending = syncState.isLoading;
     final locations = ref.watch(homeRepositoryProvider).watchLocations();
     final assets = ref.watch(assetsProvider);
     final setupIncomplete = locations.isEmpty || assets.isEmpty;
@@ -52,7 +55,15 @@ class AppShell extends ConsumerWidget {
               Expanded(
                 child: Column(
                   children: [
-                    if (navigationShell.currentIndex == 0 && setupIncomplete)
+                    if (navigationShell.currentIndex == 0 && firstSyncPending)
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                          child: _SyncBanner(lang: lang),
+                        ),
+                      )
+                    else if (navigationShell.currentIndex == 0 && setupIncomplete)
                       SafeArea(
                         bottom: false,
                         child: Padding(
@@ -93,6 +104,49 @@ class AppShell extends ConsumerWidget {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
+    );
+  }
+}
+
+class _SyncBanner extends StatelessWidget {
+  const _SyncBanner({required this.lang});
+  final String lang;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: scheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lang == 'ar' ? 'جارٍ مزامنة منزلك…' : 'Syncing your home…',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  lang == 'ar' ? 'نعرض بياناتك الحالية قبل اقتراح أي خطوة جديدة.' : 'We are loading your current data before suggesting a next step.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
