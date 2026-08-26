@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
@@ -22,10 +23,14 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
   Widget build(BuildContext context) {
     final lang = Localizations.localeOf(context).languageCode;
     final l10n = AppLocalizations.of(context)!;
-    final records = ref.watch(maintenanceProvider).where((r) {
+    final assets = ref.watch(assetsProvider);
+    final records = ref.watch(maintenanceProvider).where((record) {
       if (_searchQuery.isEmpty) return true;
       final query = _searchQuery.toLowerCase();
-      return r.description.value(lang).toLowerCase().contains(query) || r.type.value(lang).toLowerCase().contains(query);
+      final assetName = _assetName(assets, record.assetId, lang).toLowerCase();
+      return record.description.value(lang).toLowerCase().contains(query) ||
+          record.type.value(lang).toLowerCase().contains(query) ||
+          assetName.contains(query);
     }).toList();
 
     return ResponsivePage(
@@ -46,7 +51,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         TextField(
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search_rounded),
-            labelText: lang == 'ar' ? 'بحث في سجلات الصيانة' : 'Search maintenance',
+            labelText: lang == 'ar' ? 'بحث في الصيانة أو الأصل' : 'Search maintenance or asset',
           ),
           onChanged: (value) => setState(() => _searchQuery = value),
         ),
@@ -55,42 +60,52 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
           EmptyState(
             icon: Icons.handyman_rounded,
             title: lang == 'ar' ? 'لا توجد سجلات صيانة' : 'No maintenance records',
-            message: lang == 'ar' ? 'عند تنفيذ أول صيانة أضفها هنا ليبقى تاريخ الأصل واضحًا.' : 'Add your first completed maintenance to start building the asset history.',
+            message: lang == 'ar' ? 'عند تنفيذ أول صيانة اربطها بالأصل ليبقى تاريخه واضحًا.' : 'Add your first maintenance record and link it to the asset to build a clear history.',
             actionLabel: lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance',
             onAction: () => _showForm(context, null),
           )
         else
           ...records.map(
-            (record) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: AppCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58),
-                      borderRadius: BorderRadius.circular(14),
+            (record) {
+              final assetName = _assetName(assets, record.assetId, lang);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.handyman_rounded, color: Theme.of(context).colorScheme.primary),
                     ),
-                    child: Icon(Icons.handyman_rounded, color: Theme.of(context).colorScheme.primary),
-                  ),
-                  title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${record.type.value(lang)} • ${compactDate(record.date, lang)} • ${record.cost.toStringAsFixed(0)} SAR'),
-                  trailing: IconButton(
-                    tooltip: lang == 'ar' ? 'التفاصيل' : 'Details',
-                    icon: const Icon(Icons.info_outline_rounded),
-                    onPressed: () => _showDetails(context, record, lang),
+                    title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text('$assetName • ${compactDate(record.date, lang)} • ${record.cost.toStringAsFixed(0)} SAR'),
+                    trailing: IconButton(
+                      tooltip: lang == 'ar' ? 'التفاصيل' : 'Details',
+                      icon: const Icon(Icons.info_outline_rounded),
+                      onPressed: () => _showDetails(context, record, assetName, lang),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
       ],
     );
   }
 
-  void _showDetails(BuildContext context, MaintenanceRecord record, String lang) {
+  String _assetName(List<HomeAsset> assets, String assetId, String lang) {
+    for (final asset in assets) {
+      if (asset.id == assetId) return asset.name.value(lang);
+    }
+    return lang == 'ar' ? 'أصل غير متاح' : 'Unavailable asset';
+  }
+
+  void _showDetails(BuildContext context, MaintenanceRecord record, String assetName, String lang) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -103,6 +118,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
             children: [
               Text(record.description.value(lang), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
+              Text('${lang == 'ar' ? 'الأصل' : 'Asset'}: $assetName'),
+              const SizedBox(height: 6),
               Text('${lang == 'ar' ? 'التكلفة' : 'Cost'}: ${record.cost.toStringAsFixed(0)} SAR'),
               const SizedBox(height: 6),
               Text('${lang == 'ar' ? 'التاريخ' : 'Date'}: ${compactDate(record.date, lang)}'),
@@ -119,8 +136,17 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   void _showForm(BuildContext context, MaintenanceRecord? existing) {
     final lang = Localizations.localeOf(context).languageCode;
+    final assets = ref.read(assetsProvider);
     final descCtrl = TextEditingController(text: existing?.description.value(lang));
     final costCtrl = TextEditingController(text: existing?.cost.toString());
+    String? selectedAssetId;
+
+    if (existing != null && assets.any((asset) => asset.id == existing.assetId)) {
+      selectedAssetId = existing.assetId;
+    } else if (assets.isNotEmpty) {
+      selectedAssetId = assets.first.id;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -129,41 +155,68 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(
-                existing == null ? (lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance') : (lang == 'ar' ? 'تعديل الصيانة' : 'Edit maintenance'),
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
+            Text(
+              existing == null ? (lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance') : (lang == 'ar' ? 'تعديل الصيانة' : 'Edit maintenance'),
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
-            TextField(controller: descCtrl, autofocus: true, decoration: InputDecoration(labelText: lang == 'ar' ? 'ماذا تم؟' : 'What was done?')),
-            const SizedBox(height: 12),
-            TextField(controller: costCtrl, decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
+            if (assets.isEmpty) ...[
+              AppCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.devices_other_rounded),
+                  title: Text(lang == 'ar' ? 'لا يوجد أصل لربط الصيانة به' : 'There is no asset to link this maintenance to'),
+                  subtitle: Text(lang == 'ar' ? 'أضف أصلًا أولًا ثم سجّل الصيانة.' : 'Add an asset first, then record its maintenance.'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
                 onPressed: () {
-                  if (descCtrl.text.trim().isEmpty) return;
+                  Navigator.pop(ctx);
+                  context.push('/asset/new');
+                },
+                icon: const Icon(Icons.add_rounded),
+                label: Text(lang == 'ar' ? 'إضافة أصل' : 'Add asset'),
+              ),
+            ] else ...[
+              DropdownButtonFormField<String>(
+                initialValue: selectedAssetId,
+                decoration: InputDecoration(labelText: lang == 'ar' ? 'الأصل' : 'Asset', prefixIcon: const Icon(Icons.devices_other_rounded)),
+                items: assets.map((asset) => DropdownMenuItem(value: asset.id, child: Text(asset.name.value(lang)))).toList(),
+                onChanged: (value) => selectedAssetId = value,
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: descCtrl, autofocus: true, decoration: InputDecoration(labelText: lang == 'ar' ? 'ماذا تم؟' : 'What was done?')),
+              const SizedBox(height: 12),
+              TextField(
+                controller: costCtrl,
+                decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost', suffixText: 'SAR'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () {
+                  final cost = double.tryParse(costCtrl.text.trim());
+                  if (selectedAssetId == null || descCtrl.text.trim().isEmpty || cost == null || cost < 0) return;
                   final record = MaintenanceRecord(
-                    id: existing?.id ?? 'm-${DateTime.now().millisecondsSinceEpoch}',
-                    assetId: existing?.assetId ?? 'unassigned',
+                    id: existing?.id ?? 'm-${DateTime.now().microsecondsSinceEpoch}',
+                    assetId: selectedAssetId!,
                     date: existing?.date ?? DateTime.now(),
                     type: existing?.type ?? const LocalizedText(ar: 'عام', en: 'General'),
                     description: LocalizedText(ar: descCtrl.text.trim(), en: descCtrl.text.trim()),
-                    cost: double.tryParse(costCtrl.text) ?? 0,
+                    cost: cost,
                     nextDue: existing?.nextDue ?? DateTime.now().add(const Duration(days: 30)),
                   );
                   ref.read(maintenanceRepositoryProvider).addMaintenance(record);
                   ref.invalidate(maintenanceProvider);
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ سجل الصيانة' : 'Maintenance saved')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم تسجيل الصيانة وربطها بالأصل' : 'Maintenance saved and linked to the asset')));
                 },
                 child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
               ),
-            ),
+            ],
           ],
         ),
       ),
