@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_gate.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
@@ -22,7 +23,9 @@ class ProvidersScreen extends ConsumerWidget {
         IconButton(
           tooltip: lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider',
           icon: const Icon(Icons.add_rounded),
-          onPressed: () => _showForm(context, ref, null),
+          onPressed: () {
+            if (ensureProviderAccess(context, ref)) _showForm(context, ref, null);
+          },
         ),
       ],
       children: [
@@ -37,36 +40,36 @@ class ProvidersScreen extends ConsumerWidget {
             title: lang == 'ar' ? 'لا يوجد مقدمو خدمة' : 'No providers yet',
             message: lang == 'ar' ? 'أضف أول فني أو شركة تتعامل معها.' : 'Add the first technician or company you work with.',
             actionLabel: lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider',
-            onAction: () => _showForm(context, ref, null),
+            onAction: () {
+              if (ensureProviderAccess(context, ref)) _showForm(context, ref, null);
+            },
           )
         else
-          ...items.map(
-            (provider) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: AppCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    child: Text(provider.name.isEmpty ? '?' : provider.name.characters.first.toUpperCase()),
-                  ),
-                  title: Text(provider.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${provider.type.value(lang)} • ${provider.phone}\n${lang == 'ar' ? 'الزيارات' : 'Visits'}: ${provider.visitCount}'),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') _showForm(context, ref, provider);
-                      if (value == 'delete') _delete(context, ref, provider, lang);
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(lang == 'ar' ? 'تعديل' : 'Edit'))),
-                      PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error), title: Text(lang == 'ar' ? 'حذف' : 'Delete'))),
-                    ],
+          ...items.map((provider) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      child: Text(provider.name.isEmpty ? '?' : provider.name.characters.first.toUpperCase()),
+                    ),
+                    title: Text(provider.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text('${provider.type.value(lang)} • ${provider.phone}\n${lang == 'ar' ? 'الزيارات' : 'Visits'}: ${provider.visitCount}'),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') _showForm(context, ref, provider);
+                        if (value == 'delete') _delete(context, ref, provider, lang);
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(lang == 'ar' ? 'تعديل' : 'Edit'))),
+                        PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error), title: Text(lang == 'ar' ? 'حذف' : 'Delete'))),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
+              )),
       ],
     );
   }
@@ -83,14 +86,15 @@ class ProvidersScreen extends ConsumerWidget {
               FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
             ],
           ),
-        ) ??
-        false;
+        ) ?? false;
     if (!ok) return;
     ref.read(providerRepositoryProvider).deleteProvider(provider.id);
     ref.invalidate(providersProvider);
   }
 
   void _showForm(BuildContext context, WidgetRef ref, ProviderContact? provider) {
+    if (provider == null && !ensureProviderAccess(context, ref)) return;
+
     final lang = Localizations.localeOf(context).languageCode;
     final nameCtrl = TextEditingController(text: provider?.name);
     final phoneCtrl = TextEditingController(text: provider?.phone);
@@ -115,6 +119,10 @@ class ProvidersScreen extends ConsumerWidget {
               child: FilledButton(
                 onPressed: () {
                   if (nameCtrl.text.trim().isEmpty) return;
+                  if (provider == null && !ensureProviderAccess(context, ref)) {
+                    Navigator.pop(ctx);
+                    return;
+                  }
                   ref.read(providerRepositoryProvider).upsertProvider(
                         ProviderContact(
                           id: provider?.id ?? 'p-${DateTime.now().microsecondsSinceEpoch}',
