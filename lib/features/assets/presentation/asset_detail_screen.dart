@@ -56,7 +56,14 @@ class AssetDetailScreen extends ConsumerWidget {
     final warranties = ref.watch(warrantiesProvider).where((item) => item.assetId == id).toList();
     final documents = ref.watch(documentsProvider).where((item) => item.relatedAssetId == id).toList();
     final expenses = ref.watch(expensesProvider).where((item) => item.assetId == id).toList();
-    final activity = ref.watch(activityProvider);
+    final activity = ref.watch(activityProvider).where((event) {
+      final arName = asset.name.ar;
+      final enName = asset.name.en;
+      return event.entity.ar == arName ||
+          event.entity.en == enName ||
+          (arName.isNotEmpty && event.description.ar.contains(arName)) ||
+          (enName.isNotEmpty && event.description.en.contains(enName));
+    }).toList();
 
     return DefaultTabController(
       length: 6,
@@ -147,7 +154,7 @@ class AssetDetailScreen extends ConsumerWidget {
                 ),
                 _Timeline(
                   items: activity.map((item) => item.description.value(lang)).toList(),
-                  emptyText: lang == 'ar' ? 'لا يوجد نشاط مسجل بعد.' : 'No activity recorded yet.',
+                  emptyText: lang == 'ar' ? 'لا يوجد نشاط مرتبط بهذا الأصل بعد.' : 'No activity linked to this asset yet.',
                 ),
               ],
             ),
@@ -178,10 +185,11 @@ class AssetDetailScreen extends ConsumerWidget {
 
     if (!confirmed || !context.mounted) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     final removed = ref.read(assetRepositoryProvider).softDeleteAsset(assetId);
     ref.invalidate(assetsProvider);
     context.pop();
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'),
         action: SnackBarAction(
