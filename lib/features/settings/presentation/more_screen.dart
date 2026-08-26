@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/locale_controller.dart';
+import '../../../core/subscriptions/subscription_providers.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
@@ -17,11 +18,23 @@ class MoreScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
     final themeMode = ref.watch(themeControllerProvider);
+    final entitlement = ref.watch(subscriptionEntitlementProvider);
+    final usage = ref.watch(usageSnapshotProvider);
 
     return ResponsivePage(
       title: l10n.more,
       children: [
         _HeroCard(lang: lang, onSearch: () => context.push('/search'), onProfile: () => context.push('/profile')),
+        const SizedBox(height: 16),
+        _SubscriptionCard(
+          plan: entitlement.title(lang),
+          price: entitlement.priceLabel(lang),
+          usageText: lang == 'ar'
+              ? '${usage.homes} منزل • ${usage.assets} أصل • ${usage.activeReminders} تذكيرات نشطة'
+              : '${usage.homes} home • ${usage.assets} assets • ${usage.activeReminders} active reminders',
+          lang: lang,
+          onTap: () => context.push('/upgrade'),
+        ),
         SectionTitle(lang == 'ar' ? 'إدارة المنزل' : 'Manage Home'),
         AppCard(
           padding: const EdgeInsets.all(10),
@@ -119,10 +132,7 @@ class MoreScreen extends ConsumerWidget {
         AppCard(
           child: ListTile(
             leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
-            title: Text(
-              lang == 'ar' ? 'تسجيل الخروج' : 'Log out',
-              style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700),
-            ),
+            title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700)),
             subtitle: Text(lang == 'ar' ? 'ستحتاج لتسجيل الدخول للوصول إلى بياناتك مرة أخرى.' : 'You will need to sign in again to access your data.'),
             onTap: () => _confirmLogout(context, ref, lang),
           ),
@@ -153,13 +163,7 @@ class MoreScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               for (final mode in ThemeMode.values)
                 ListTile(
-                  leading: Icon(
-                    mode == ThemeMode.light
-                        ? Icons.light_mode_outlined
-                        : mode == ThemeMode.dark
-                            ? Icons.dark_mode_outlined
-                            : Icons.brightness_auto_outlined,
-                  ),
+                  leading: Icon(mode == ThemeMode.light ? Icons.light_mode_outlined : mode == ThemeMode.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined),
                   title: Text(_themeLabel(mode, lang)),
                   trailing: mode == current ? Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary) : null,
                   onTap: () => Navigator.pop(context, mode),
@@ -169,9 +173,7 @@ class MoreScreen extends ConsumerWidget {
         ),
       ),
     );
-    if (selected != null) {
-      await ref.read(themeControllerProvider.notifier).setThemeMode(selected);
-    }
+    if (selected != null) await ref.read(themeControllerProvider.notifier).setThemeMode(selected);
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref, String lang) async {
@@ -180,18 +182,13 @@ class MoreScreen extends ConsumerWidget {
           builder: (context) => AlertDialog(
             icon: const Icon(Icons.logout_rounded),
             title: Text(lang == 'ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out?'),
-            content: Text(
-              lang == 'ar'
-                  ? 'لن تُحذف بياناتك. يمكنك العودة إليها عند تسجيل الدخول بالحساب نفسه.'
-                  : 'Your data will not be deleted. Sign in with the same account to access it again.',
-            ),
+            content: Text(lang == 'ar' ? 'لن تُحذف بياناتك. يمكنك العودة إليها عند تسجيل الدخول بالحساب نفسه.' : 'Your data will not be deleted. Sign in with the same account to access it again.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
               FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out')),
             ],
           ),
-        ) ??
-        false;
+        ) ?? false;
     if (!ok) return;
     await ref.read(authControllerProvider.notifier).signOut();
     if (context.mounted) context.go('/auth');
@@ -204,16 +201,46 @@ class MoreScreen extends ConsumerWidget {
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 12),
-              Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.55)),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.55)),
+          ]),
         ),
+      ),
+    );
+  }
+}
+
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard({required this.plan, required this.price, required this.usageText, required this.lang, required this.onTap});
+  final String plan;
+  final String price;
+  final String usageText;
+  final String lang;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: LinearGradient(colors: [scheme.primaryContainer.withValues(alpha: .72), scheme.secondaryContainer.withValues(alpha: .48)]),
+      ),
+      child: AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.workspace_premium_rounded, color: scheme.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(plan, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+            Text(price, style: TextStyle(fontWeight: FontWeight.w800, color: scheme.primary)),
+          ]),
+          const SizedBox(height: 8),
+          Text(usageText, style: TextStyle(color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: FilledButton.tonalIcon(onPressed: onTap, icon: const Icon(Icons.arrow_upward_rounded), label: Text(lang == 'ar' ? 'عرض الخطط' : 'View plans'))),
+        ]),
       ),
     );
   }
@@ -230,39 +257,19 @@ class _HeroCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [scheme.primaryContainer, scheme.secondaryContainer.withValues(alpha: .82)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.tune_rounded, color: scheme.onPrimaryContainer, size: 30),
-          const SizedBox(height: 14),
-          Text(
-            lang == 'ar' ? 'كل شيء في مكانه' : 'Everything in its place',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            lang == 'ar' ? 'أدر منزلك، حسابك وتفضيلاتك من هنا.' : 'Manage your home, account and preferences here.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: .78)),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.tonalIcon(onPressed: onProfile, icon: const Icon(Icons.person_rounded), label: Text(lang == 'ar' ? 'حسابي' : 'My account')),
-              OutlinedButton.icon(onPressed: onSearch, icon: const Icon(Icons.search_rounded), label: Text(lang == 'ar' ? 'بحث' : 'Search')),
-            ],
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: LinearGradient(begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [scheme.primaryContainer, scheme.secondaryContainer.withValues(alpha: .82)])),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.tune_rounded, color: scheme.onPrimaryContainer, size: 30),
+        const SizedBox(height: 14),
+        Text(lang == 'ar' ? 'كل شيء في مكانه' : 'Everything in its place', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer)),
+        const SizedBox(height: 6),
+        Text(lang == 'ar' ? 'أدر منزلك، حسابك وتفضيلاتك من هنا.' : 'Manage your home, account and preferences here.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: .78))),
+        const SizedBox(height: 18),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          FilledButton.tonalIcon(onPressed: onProfile, icon: const Icon(Icons.person_rounded), label: Text(lang == 'ar' ? 'حسابي' : 'My account')),
+          OutlinedButton.icon(onPressed: onSearch, icon: const Icon(Icons.search_rounded), label: Text(lang == 'ar' ? 'بحث' : 'Search')),
+        ]),
+      ]),
     );
   }
 }
@@ -272,18 +279,9 @@ class _NavTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(icon, color: Theme.of(context).colorScheme.primary),
-        ),
+        leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: Theme.of(context).colorScheme.primary)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: onTap,
@@ -294,34 +292,19 @@ class _SettingsGroup extends StatelessWidget {
   const _SettingsGroup({required this.title, required this.items});
   final String title;
   final List<_SettingsItem> items;
-
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          ),
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  ListTile(
-                    leading: Icon(items[i].icon),
-                    title: Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(items[i].subtitle),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: items[i].onTap,
-                  ),
-                  if (i < items.length - 1) const Divider(height: 1, indent: 56),
-                ],
-              ],
-            ),
-          ),
-        ],
-      );
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.fromLTRB(4, 22, 4, 10), child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: [
+            for (var i = 0; i < items.length; i++) ...[
+              ListTile(leading: Icon(items[i].icon), title: Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(items[i].subtitle), trailing: const Icon(Icons.chevron_right_rounded), onTap: items[i].onTap),
+              if (i < items.length - 1) const Divider(height: 1, indent: 56),
+            ],
+          ]),
+        ),
+      ]);
 }
 
 class _SettingsItem {
