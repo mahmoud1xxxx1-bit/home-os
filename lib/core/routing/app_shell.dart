@@ -11,12 +11,13 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final lang = Localizations.localeOf(context).languageCode;
     final destinations = [
       _Destination(l10n.home, Icons.home_rounded),
       _Destination(l10n.house, Icons.maps_home_work_rounded),
       _Destination(l10n.schedule, Icons.event_available_rounded),
       _Destination(l10n.activity, Icons.history_rounded),
-      _Destination(l10n.more, Icons.more_horiz_rounded),
+      _Destination(lang == 'ar' ? 'الإعدادات' : 'Settings', Icons.settings_rounded),
     ];
 
     return LayoutBuilder(
