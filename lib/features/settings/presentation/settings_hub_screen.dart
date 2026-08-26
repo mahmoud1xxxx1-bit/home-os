@@ -7,6 +7,7 @@ import '../../../core/subscriptions/subscription_providers.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
+import '../../auth/domain/auth_models.dart';
 import '../../auth/presentation/auth_controller.dart';
 
 class SettingsHubScreen extends ConsumerWidget {
@@ -17,6 +18,8 @@ class SettingsHubScreen extends ConsumerWidget {
     final lang = Localizations.localeOf(context).languageCode;
     final themeMode = ref.watch(themeControllerProvider);
     final entitlement = ref.watch(subscriptionEntitlementProvider);
+    final auth = ref.watch(authControllerProvider);
+    final isGuest = auth.user?.provider == AuthProviderType.anonymous;
 
     return ResponsivePage(
       title: lang == 'ar' ? 'الإعدادات' : 'Settings',
@@ -29,7 +32,9 @@ class SettingsHubScreen extends ConsumerWidget {
             _Tile(
               icon: Icons.person_outline_rounded,
               title: lang == 'ar' ? 'حسابي' : 'My account',
-              subtitle: lang == 'ar' ? 'تسجيل الدخول، الحساب الضيف وحذف الحساب' : 'Sign-in, guest account and account deletion',
+              subtitle: isGuest
+                  ? (lang == 'ar' ? 'حساب ضيف غير محفوظ — اربطه بـ Google لحماية بياناتك' : 'Unprotected guest account — link Google to protect your data')
+                  : (lang == 'ar' ? 'إدارة تسجيل الدخول والحساب' : 'Manage sign-in and account'),
               onTap: () => context.push('/profile'),
             ),
             _Tile(
@@ -107,12 +112,18 @@ class SettingsHubScreen extends ConsumerWidget {
         AppCard(
           child: ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
+            leading: Icon(isGuest ? Icons.shield_outlined : Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
             title: Text(
-              lang == 'ar' ? 'تسجيل الخروج' : 'Log out',
+              isGuest
+                  ? (lang == 'ar' ? 'احفظ الحساب قبل الخروج' : 'Protect account before logout')
+                  : (lang == 'ar' ? 'تسجيل الخروج' : 'Log out'),
               style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.error),
             ),
-            subtitle: Text(lang == 'ar' ? 'لن تُحذف بياناتك من Home OS.' : 'Your Home OS data will not be deleted.'),
+            subtitle: Text(
+              isGuest
+                  ? (lang == 'ar' ? 'حساب الضيف يحتاج إلى ربطه بـ Google حتى لا تفقد الوصول إلى بياناته.' : 'Link the guest account to Google so you do not lose access to its data.')
+                  : (lang == 'ar' ? 'لن تُحذف بياناتك من Home OS.' : 'Your Home OS data will not be deleted.'),
+            ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _confirmLogout(context, ref, lang),
           ),
@@ -155,6 +166,30 @@ class SettingsHubScreen extends ConsumerWidget {
   }
 
   static Future<void> _confirmLogout(BuildContext context, WidgetRef ref, String lang) async {
+    final isGuest = ref.read(authControllerProvider).user?.provider == AuthProviderType.anonymous;
+    if (isGuest) {
+      final openAccount = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AlertDialog(
+              icon: const Icon(Icons.shield_outlined),
+              title: Text(lang == 'ar' ? 'حساب الضيف يحتاج إلى حفظ' : 'Protect your guest account'),
+              content: Text(
+                lang == 'ar'
+                    ? 'لن نسجل خروجك الآن لأن بياناتك مرتبطة بهوية ضيف مؤقتة. اربط الحساب بـ Google أولًا حتى تحتفظ بنفس الأصول والصيانة والضمانات.'
+                    : 'We will not sign you out while your data is tied to a temporary guest identity. Link Google first to keep the same assets, maintenance and warranties.',
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(lang == 'ar' ? 'فتح حسابي' : 'Open my account')),
+              ],
+            ),
+          ) ??
+          false;
+      if (openAccount && context.mounted) context.push('/profile');
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -178,8 +213,15 @@ class SettingsHubScreen extends ConsumerWidget {
         ) ??
         false;
     if (!confirmed) return;
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (context.mounted) context.go('/auth');
+
+    try {
+      await ref.read(authControllerProvider.notifier).signOut();
+      if (context.mounted) context.go('/auth');
+    } on StateError catch (error) {
+      if (error.message == 'GUEST_ACCOUNT_NOT_LINKED' && context.mounted) {
+        context.push('/profile');
+      }
+    }
   }
 
   static void _showPrivacy(BuildContext context, String lang) {
