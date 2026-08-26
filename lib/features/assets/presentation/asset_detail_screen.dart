@@ -28,11 +28,7 @@ class AssetDetailScreen extends ConsumerWidget {
           AppCard(
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.4),
-              ),
+              leading: const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.4)),
               title: Text(lang == 'ar' ? 'جارٍ تحميل الأصل...' : 'Loading asset...'),
               subtitle: Text(
                 lang == 'ar'
@@ -52,122 +48,110 @@ class AssetDetailScreen extends ConsumerWidget {
     }
 
     final asset = matching.first;
-    final maintenance = ref.watch(maintenanceProvider).where((item) => item.assetId == id).toList();
-    final warranties = ref.watch(warrantiesProvider).where((item) => item.assetId == id).toList();
+    final maintenance = ref.watch(maintenanceProvider).where((item) => item.assetId == id).toList()..sort((a, b) => b.date.compareTo(a.date));
+    final warranties = ref.watch(warrantiesProvider).where((item) => item.assetId == id).toList()..sort((a, b) => a.end.compareTo(b.end));
     final documents = ref.watch(documentsProvider).where((item) => item.relatedAssetId == id).toList();
     final expenses = ref.watch(expensesProvider).where((item) => item.assetId == id).toList();
-    final activity = ref.watch(activityProvider).where((event) {
-      final arName = asset.name.ar;
-      final enName = asset.name.en;
-      return event.entity.ar == arName ||
-          event.entity.en == enName ||
-          (arName.isNotEmpty && event.description.ar.contains(arName)) ||
-          (enName.isNotEmpty && event.description.en.contains(enName));
-    }).toList();
+    final location = ref.watch(homeRepositoryProvider).locationById(asset.locationId);
 
-    return DefaultTabController(
-      length: 6,
-      child: ResponsivePage(
-        title: asset.name.value(lang),
-        actions: [
-          IconButton(
-            tooltip: lang == 'ar' ? 'أرشفة الأصل' : 'Archive asset',
-            icon: const Icon(Icons.archive_outlined),
-            onPressed: () => _confirmArchive(context, ref, asset.id, asset.name.value(lang), lang),
-          ),
-        ],
-        children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      child: Icon(asset.vehicle == null ? Icons.devices_other_rounded : Icons.directions_car_rounded),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(asset.name.value(lang), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 3),
-                          Text(
-                            [asset.brand, asset.model].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • ').isEmpty
-                                ? (lang == 'ar' ? 'لا توجد تفاصيل إضافية' : 'No additional details')
-                                : [asset.brand, asset.model].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • '),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TabBar(
-                  isScrollable: true,
-                  tabs: [
-                    Tab(text: l10n.overview),
-                    Tab(text: l10n.maintenance),
-                    Tab(text: l10n.warranty),
-                    Tab(text: l10n.documents),
-                    Tab(text: l10n.expenses),
-                    Tab(text: l10n.activity),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 500,
-            child: TabBarView(
-              children: [
-                _Overview(assetId: id),
-                _LinkedSection(
-                  items: maintenance.map((item) => '${item.type.value(lang)} • ${compactDate(item.date, lang)} • ${item.cost.toStringAsFixed(0)} SAR').toList(),
-                  emptyText: lang == 'ar' ? 'لا توجد صيانة مسجلة لهذا الأصل.' : 'No maintenance recorded for this asset.',
-                  buttonLabel: l10n.maintenance,
-                  onOpen: () => context.push('/manage/maintenance'),
-                ),
-                _LinkedSection(
-                  items: warranties.map((item) => '${item.provider} • ${compactDate(item.end, lang)}').toList(),
-                  emptyText: lang == 'ar' ? 'لا يوجد ضمان مرتبط بهذا الأصل.' : 'No warranty linked to this asset.',
-                  buttonLabel: l10n.warranties,
-                  onOpen: () => context.push('/manage/warranties'),
-                ),
-                _LinkedSection(
-                  items: documents.map((item) => '${item.title.value(lang)} • ${item.category.value(lang)}').toList(),
-                  emptyText: lang == 'ar' ? 'لا توجد مستندات مرتبطة بهذا الأصل.' : 'No documents linked to this asset.',
-                  buttonLabel: l10n.documents,
-                  onOpen: () => context.push('/manage/documents'),
-                ),
-                _LinkedSection(
-                  items: expenses.map((item) => '${item.title.value(lang)} • ${item.amount.toStringAsFixed(0)} SAR').toList(),
-                  emptyText: lang == 'ar' ? 'لا توجد مصاريف مرتبطة بهذا الأصل.' : 'No expenses linked to this asset.',
-                  buttonLabel: l10n.expenses,
-                  onOpen: () => context.push('/manage/expenses'),
-                ),
-                _Timeline(
-                  items: activity.map((item) => item.description.value(lang)).toList(),
-                  emptyText: lang == 'ar' ? 'لا يوجد نشاط مرتبط بهذا الأصل بعد.' : 'No activity linked to this asset yet.',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return ResponsivePage(
+      title: asset.name.value(lang),
+      actions: [
+        PopupMenuButton<String>(
+          tooltip: lang == 'ar' ? 'خيارات الأصل' : 'Asset options',
+          onSelected: (value) {
+            if (value == 'archive') _confirmArchive(context, ref, asset.id, asset.name.value(lang), lang);
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'archive', child: Text(lang == 'ar' ? 'أرشفة الأصل' : 'Archive asset')),
+          ],
+        ),
+      ],
+      children: [
+        _AssetHero(
+          name: asset.name.value(lang),
+          subtitle: [asset.brand, asset.model].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • '),
+          location: location?.name.value(lang),
+          isVehicle: asset.vehicle != null,
+          lang: lang,
+        ),
+        const SizedBox(height: 18),
+        Text(lang == 'ar' ? 'ماذا تريد أن تفعل؟' : 'What do you want to do?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: MediaQuery.sizeOf(context).width >= 720 ? 4 : 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.55,
+          children: [
+            _ActionCard(icon: Icons.handyman_rounded, label: lang == 'ar' ? 'صيانة' : 'Maintenance', onTap: () => context.push('/manage/maintenance')),
+            _ActionCard(icon: Icons.verified_rounded, label: lang == 'ar' ? 'ضمان' : 'Warranty', onTap: () => context.push('/manage/warranties')),
+            _ActionCard(icon: Icons.description_rounded, label: lang == 'ar' ? 'مستند' : 'Document', onTap: () => context.push('/manage/documents')),
+            _ActionCard(icon: Icons.payments_rounded, label: lang == 'ar' ? 'مصروف' : 'Expense', onTap: () => context.push('/manage/expenses')),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _DetailsCard(
+          lang: lang,
+          location: location?.name.value(lang),
+          category: asset.category.name,
+          brand: asset.brand,
+          model: asset.model,
+          serial: asset.serialNumber,
+          purchasePrice: asset.purchasePrice,
+          notes: asset.notes?.value(lang),
+        ),
+        const SizedBox(height: 18),
+        _HistorySection(
+          title: lang == 'ar' ? 'الصيانة' : 'Maintenance',
+          icon: Icons.handyman_rounded,
+          count: maintenance.length,
+          emptyText: lang == 'ar' ? 'لا توجد صيانة مسجلة لهذا الأصل.' : 'No maintenance recorded for this asset.',
+          items: maintenance.take(3).map((item) => '${item.description.value(lang)} • ${compactDate(item.date, lang)} • ${item.cost.toStringAsFixed(0)} SAR').toList(),
+          onOpen: () => context.push('/manage/maintenance'),
+          lang: lang,
+        ),
+        const SizedBox(height: 12),
+        _HistorySection(
+          title: lang == 'ar' ? 'الضمان' : 'Warranty',
+          icon: Icons.verified_rounded,
+          count: warranties.length,
+          emptyText: lang == 'ar' ? 'لا يوجد ضمان مرتبط بهذا الأصل.' : 'No warranty linked to this asset.',
+          items: warranties.take(3).map((item) => '${item.provider} • ${compactDate(item.end, lang)}').toList(),
+          onOpen: () => context.push('/manage/warranties'),
+          lang: lang,
+        ),
+        const SizedBox(height: 12),
+        _HistorySection(
+          title: lang == 'ar' ? 'المستندات' : 'Documents',
+          icon: Icons.description_rounded,
+          count: documents.length,
+          emptyText: lang == 'ar' ? 'لا توجد مستندات مرتبطة بهذا الأصل.' : 'No documents linked to this asset.',
+          items: documents.take(3).map((item) => item.title.value(lang)).toList(),
+          onOpen: () => context.push('/manage/documents'),
+          lang: lang,
+        ),
+        const SizedBox(height: 12),
+        _HistorySection(
+          title: lang == 'ar' ? 'المصاريف' : 'Expenses',
+          icon: Icons.payments_rounded,
+          count: expenses.length,
+          emptyText: lang == 'ar' ? 'لا توجد مصاريف مرتبطة بهذا الأصل.' : 'No expenses linked to this asset.',
+          items: expenses.take(3).map((item) => '${item.title.value(lang)} • ${item.amount.toStringAsFixed(0)} SAR').toList(),
+          onOpen: () => context.push('/manage/expenses'),
+          lang: lang,
+        ),
+        const SizedBox(height: 28),
+      ],
     );
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref, String assetId, String name, String lang) async {
     final confirmed = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             icon: const Icon(Icons.archive_outlined),
             title: Text(lang == 'ar' ? 'أرشفة الأصل؟' : 'Archive asset?'),
             content: Text(
@@ -176,8 +160,8 @@ class AssetDetailScreen extends ConsumerWidget {
                   : '$name will be moved to the archive instead of being permanently deleted. You can restore it later.',
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'أرشفة' : 'Archive')),
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(lang == 'ar' ? 'أرشفة' : 'Archive')),
             ],
           ),
         ) ??
@@ -206,103 +190,186 @@ class AssetDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Overview extends ConsumerWidget {
-  const _Overview({required this.assetId});
-
-  final String assetId;
+class _AssetHero extends StatelessWidget {
+  const _AssetHero({required this.name, required this.subtitle, required this.location, required this.isVehicle, required this.lang});
+  final String name;
+  final String subtitle;
+  final String? location;
+  final bool isVehicle;
+  final String lang;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final lang = Localizations.localeOf(context).languageCode;
-    final assets = ref.watch(assetsProvider);
-    final matching = assets.where((item) => item.id == assetId).toList();
-    if (matching.isEmpty) {
-      return AppCard(child: Center(child: Text(lang == 'ar' ? 'جارٍ تحديث البيانات...' : 'Refreshing data...')));
-    }
-
-    final asset = matching.first;
-    final location = ref.watch(homeRepositoryProvider).locationById(asset.locationId);
-
-    return AppCard(
-      child: SingleChildScrollView(
-        child: Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _Chip(l10n.location, location?.name.value(lang) ?? '-'),
-            _Chip(l10n.category, asset.category.name),
-            _Chip(l10n.brand, asset.brand ?? '-'),
-            _Chip(l10n.model, asset.model ?? '-'),
-            _Chip(l10n.serialNumber, asset.serialNumber ?? '-'),
-            if (asset.purchaseDate != null) _Chip(l10n.purchaseDate, compactDate(asset.purchaseDate!, lang)),
-            if (asset.purchasePrice != null) _Chip(l10n.purchasePrice, '${asset.purchasePrice!.toStringAsFixed(0)} SAR'),
-            if (asset.vehicle != null) _Chip(l10n.vehicles, '${asset.vehicle!.odometerKm} km'),
-            if (asset.notes != null) _Chip(l10n.notes, asset.notes!.value(lang)),
-          ],
-        ),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(colors: [scheme.primaryContainer, scheme.secondaryContainer.withValues(alpha: .72)]),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(color: scheme.surface.withValues(alpha: .8), borderRadius: BorderRadius.circular(18)),
+            child: Icon(isVehicle ? Icons.directions_car_rounded : Icons.devices_other_rounded, size: 30, color: scheme.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                if (subtitle.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.room_outlined, size: 16, color: scheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(location ?? (lang == 'ar' ? 'موقع غير محدد' : 'No location'), style: TextStyle(color: scheme.onSurfaceVariant))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _LinkedSection extends StatelessWidget {
-  const _LinkedSection({required this.items, required this.emptyText, required this.buttonLabel, required this.onOpen});
-
-  final List<String> items;
-  final String emptyText;
-  final String buttonLabel;
-  final VoidCallback onOpen;
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(child: _Timeline(items: items, emptyText: emptyText)),
-        const SizedBox(height: 8),
-        SizedBox(width: double.infinity, child: OutlinedButton(onPressed: onOpen, child: Text(buttonLabel))),
-      ],
+    final scheme = Theme.of(context).colorScheme;
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(height: 8),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      ),
     );
   }
 }
 
-class _Timeline extends StatelessWidget {
-  const _Timeline({required this.items, required this.emptyText});
-
-  final List<String> items;
-  final String emptyText;
+class _DetailsCard extends StatelessWidget {
+  const _DetailsCard({required this.lang, required this.location, required this.category, this.brand, this.model, this.serial, this.purchasePrice, this.notes});
+  final String lang;
+  final String? location;
+  final String category;
+  final String? brand;
+  final String? model;
+  final String? serial;
+  final double? purchasePrice;
+  final String? notes;
 
   @override
   Widget build(BuildContext context) {
+    final entries = <MapEntry<String, String>>[
+      MapEntry(lang == 'ar' ? 'الموقع' : 'Location', location ?? '-'),
+      MapEntry(lang == 'ar' ? 'الفئة' : 'Category', category),
+      if (brand != null && brand!.trim().isNotEmpty) MapEntry(lang == 'ar' ? 'العلامة' : 'Brand', brand!),
+      if (model != null && model!.trim().isNotEmpty) MapEntry(lang == 'ar' ? 'الموديل' : 'Model', model!),
+      if (serial != null && serial!.trim().isNotEmpty) MapEntry(lang == 'ar' ? 'الرقم التسلسلي' : 'Serial number', serial!),
+      if (purchasePrice != null) MapEntry(lang == 'ar' ? 'سعر الشراء' : 'Purchase price', '${purchasePrice!.toStringAsFixed(0)} SAR'),
+      if (notes != null && notes!.trim().isNotEmpty) MapEntry(lang == 'ar' ? 'ملاحظات' : 'Notes', notes!),
+    ];
+
     return AppCard(
-      child: items.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(emptyText, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              ),
-            )
-          : ListView.separated(
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const Divider(),
-              itemBuilder: (context, index) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.circle, size: 11, color: Theme.of(context).colorScheme.primary),
-                title: Text(items[index]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(lang == 'ar' ? 'معلومات الأصل' : 'Asset information', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          for (final entry in entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 110, child: Text(entry.key, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(entry.value, style: const TextStyle(fontWeight: FontWeight.w700))),
+                ],
               ),
             ),
+        ],
+      ),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip(this.label, this.value);
-
-  final String label;
-  final String value;
+class _HistorySection extends StatelessWidget {
+  const _HistorySection({required this.title, required this.icon, required this.count, required this.emptyText, required this.items, required this.onOpen, required this.lang});
+  final String title;
+  final IconData icon;
+  final int count;
+  final String emptyText;
+  final List<String> items;
+  final VoidCallback onOpen;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(label: Text('$label: $value'));
+    final scheme = Theme.of(context).colorScheme;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: scheme.primaryContainer.withValues(alpha: .6), borderRadius: BorderRadius.circular(13)),
+                child: Icon(icon, color: scheme.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+              Text('$count', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (items.isEmpty)
+            Text(emptyText, style: TextStyle(color: scheme.onSurfaceVariant))
+          else
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(padding: const EdgeInsets.only(top: 7), child: Icon(Icons.circle, size: 8, color: scheme.primary)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(item)),
+                  ],
+                ),
+              ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: Text(items.isEmpty ? (lang == 'ar' ? 'إضافة' : 'Add') : (lang == 'ar' ? 'عرض الكل' : 'View all')),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
