@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_providers.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
@@ -44,12 +45,7 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
     final locations = ref.watch(homeRepositoryProvider).watchLocations();
-
-    if (locations.isEmpty) {
-      _locationId = null;
-    } else if (_locationId == null || !locations.any((location) => location.id == _locationId)) {
-      _locationId = locations.first.id;
-    }
+    _locationId ??= locations.isEmpty ? null : locations.first.id;
 
     return ResponsivePage(
       title: l10n.addAsset,
@@ -74,37 +70,24 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
                 DropdownButtonFormField<AssetCategory>(
                   initialValue: _category,
                   decoration: InputDecoration(labelText: l10n.category, prefixIcon: const Icon(Icons.category_outlined)),
-                  items: AssetCategory.values
-                      .map((category) => DropdownMenuItem(value: category, child: Text(_categoryLabel(category, lang))))
-                      .toList(),
+                  items: AssetCategory.values.map((category) => DropdownMenuItem(value: category, child: Text(_categoryLabel(category, lang)))).toList(),
                   onChanged: (value) => setState(() => _category = value ?? _category),
                 ),
                 const SizedBox(height: 12),
                 if (locations.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .32),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                  AppCard(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.room_preferences_rounded, color: Theme.of(context).colorScheme.primary),
-                          title: Text(lang == 'ar' ? 'أضف موقعًا أولًا' : 'Add a location first', style: const TextStyle(fontWeight: FontWeight.w700)),
-                          subtitle: Text(
-                            lang == 'ar'
-                                ? 'كل أصل يحتاج غرفة أو موقعًا حتى يبقى تنظيم المنزل واضحًا.'
-                                : 'Every asset needs a room or location so your home stays organized.',
-                          ),
+                          leading: const Icon(Icons.info_outline_rounded),
+                          title: Text(lang == 'ar' ? 'أضف موقعًا أولًا' : 'Add a location first'),
+                          subtitle: Text(lang == 'ar' ? 'كل أصل يجب أن يكون مرتبطًا بغرفة أو موقع واضح.' : 'Every asset needs a room or location.'),
                         ),
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: _saving ? null : () => context.push('/manage/locations'),
+                            onPressed: () => context.push('/manage/locations'),
                             icon: const Icon(Icons.add_location_alt_outlined),
                             label: Text(lang == 'ar' ? 'إضافة موقع الآن' : 'Add location now'),
                           ),
@@ -130,7 +113,7 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: TextButton.icon(
-                    onPressed: _saving ? null : () => setState(() => _more = !_more),
+                    onPressed: () => setState(() => _more = !_more),
                     icon: Icon(_more ? Icons.expand_less_rounded : Icons.expand_more_rounded),
                     label: Text(l10n.addMoreDetails),
                   ),
@@ -147,11 +130,7 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _price,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(labelText: l10n.purchasePrice, suffixText: 'SAR'),
-                  ),
+                  TextField(controller: _price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: l10n.purchasePrice)),
                   const SizedBox(height: 12),
                   TextField(controller: _notes, maxLines: 3, textInputAction: TextInputAction.done, decoration: InputDecoration(labelText: l10n.notes)),
                 ],
@@ -163,7 +142,7 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
                     icon: _saving
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.check_rounded),
-                    label: Text(_saving ? (lang == 'ar' ? 'جارٍ الحفظ...' : 'Saving...') : l10n.save),
+                    label: Text(l10n.save),
                   ),
                 ),
               ],
@@ -174,17 +153,15 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
     );
   }
 
-  String _categoryLabel(AssetCategory category, String lang) => switch (category) {
-        AssetCategory.appliance => lang == 'ar' ? 'جهاز منزلي' : 'Appliance',
-        AssetCategory.hvac => lang == 'ar' ? 'تكييف وتهوية' : 'HVAC',
-        AssetCategory.kitchen => lang == 'ar' ? 'مطبخ' : 'Kitchen',
-        AssetCategory.outdoor => lang == 'ar' ? 'خارجي وحديقة' : 'Outdoor',
-        AssetCategory.vehicle => lang == 'ar' ? 'مركبة' : 'Vehicle',
-        AssetCategory.other => lang == 'ar' ? 'أخرى' : 'Other',
-      };
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _locationId == null || _saving) return;
+
+    final access = ref.read(accessDecisionProvider(LimitedResource.asset));
+    if (!access.allowed) {
+      if (mounted) context.push('/upgrade?reason=${access.reasonKey}');
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final now = DateTime.now();
@@ -206,14 +183,42 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
           );
       ref.invalidate(assetsProvider);
       if (mounted) {
-        final lang = Localizations.localeOf(context).languageCode;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(lang == 'ar' ? 'تم تسجيل الأصل، جارٍ مزامنته...' : 'Asset recorded. Syncing...')),
+          SnackBar(content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تم حفظ الأصل وجارٍ مزامنته' : 'Asset saved and syncing')),
         );
         context.go('/asset/$id');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تعذر حفظ الأصل. حاول مرة أخرى.' : 'Could not save the asset. Please try again.')),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  String _categoryLabel(AssetCategory category, String lang) {
+    if (lang != 'ar') {
+      return switch (category) {
+        AssetCategory.hvac => 'HVAC',
+        AssetCategory.kitchen => 'Kitchen',
+        AssetCategory.appliance => 'Appliance',
+        AssetCategory.electronics => 'Electronics',
+        AssetCategory.plumbing => 'Plumbing',
+        AssetCategory.vehicle => 'Vehicle',
+        AssetCategory.other => 'Other',
+      };
+    }
+    return switch (category) {
+      AssetCategory.hvac => 'تكييف وتهوية',
+      AssetCategory.kitchen => 'المطبخ',
+      AssetCategory.appliance => 'أجهزة منزلية',
+      AssetCategory.electronics => 'إلكترونيات',
+      AssetCategory.plumbing => 'سباكة',
+      AssetCategory.vehicle => 'مركبة',
+      AssetCategory.other => 'أخرى',
+    };
   }
 }
