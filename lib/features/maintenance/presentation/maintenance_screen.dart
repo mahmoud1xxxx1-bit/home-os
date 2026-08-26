@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_gate.dart';
 import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
@@ -39,7 +40,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         IconButton(
           tooltip: lang == 'ar' ? 'إضافة سجل صيانة' : 'Add maintenance record',
           icon: const Icon(Icons.add_rounded),
-          onPressed: () => _showForm(context, null),
+          onPressed: () {
+            if (ensureMaintenanceAccess(context, ref)) _showForm(context, null);
+          },
         ),
       ],
       children: [
@@ -49,10 +52,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         ),
         const SizedBox(height: 14),
         TextField(
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search_rounded),
-            labelText: lang == 'ar' ? 'بحث في الصيانة أو الأصل' : 'Search maintenance or asset',
-          ),
+          decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), labelText: lang == 'ar' ? 'بحث في الصيانة أو الأصل' : 'Search maintenance or asset'),
           onChanged: (value) => setState(() => _searchQuery = value),
         ),
         const SizedBox(height: 16),
@@ -62,38 +62,35 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
             title: lang == 'ar' ? 'لا توجد سجلات صيانة' : 'No maintenance records',
             message: lang == 'ar' ? 'عند تنفيذ أول صيانة اربطها بالأصل ليبقى تاريخه واضحًا.' : 'Add your first maintenance record and link it to the asset to build a clear history.',
             actionLabel: lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance',
-            onAction: () => _showForm(context, null),
+            onAction: () {
+              if (ensureMaintenanceAccess(context, ref)) _showForm(context, null);
+            },
           )
         else
-          ...records.map(
-            (record) {
-              final assetName = _assetName(assets, record.assetId, lang);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: AppCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(Icons.handyman_rounded, color: Theme.of(context).colorScheme.primary),
-                    ),
-                    title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text('$assetName • ${compactDate(record.date, lang)} • ${record.cost.toStringAsFixed(0)} SAR'),
-                    trailing: IconButton(
-                      tooltip: lang == 'ar' ? 'التفاصيل' : 'Details',
-                      icon: const Icon(Icons.info_outline_rounded),
-                      onPressed: () => _showDetails(context, record, assetName, lang),
-                    ),
+          ...records.map((record) {
+            final assetName = _assetName(assets, record.assetId, lang);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AppCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58), borderRadius: BorderRadius.circular(14)),
+                    child: Icon(Icons.handyman_rounded, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  title: Text(record.description.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('$assetName • ${compactDate(record.date, lang)} • ${record.cost.toStringAsFixed(0)} SAR'),
+                  trailing: IconButton(
+                    tooltip: lang == 'ar' ? 'التفاصيل' : 'Details',
+                    icon: const Icon(Icons.info_outline_rounded),
+                    onPressed: () => _showDetails(context, record, assetName, lang),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }),
       ],
     );
   }
@@ -135,6 +132,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
   }
 
   void _showForm(BuildContext context, MaintenanceRecord? existing) {
+    if (existing == null && !ensureMaintenanceAccess(context, ref)) return;
+
     final lang = Localizations.localeOf(context).languageCode;
     final assets = ref.read(assetsProvider);
     final descCtrl = TextEditingController(text: existing?.description.value(lang));
@@ -157,10 +156,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              existing == null ? (lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance') : (lang == 'ar' ? 'تعديل الصيانة' : 'Edit maintenance'),
-              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
+            Text(existing == null ? (lang == 'ar' ? 'إضافة صيانة' : 'Add maintenance') : (lang == 'ar' ? 'تعديل الصيانة' : 'Edit maintenance'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             if (assets.isEmpty) ...[
               AppCard(
@@ -190,14 +186,14 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               const SizedBox(height: 12),
               TextField(controller: descCtrl, autofocus: true, decoration: InputDecoration(labelText: lang == 'ar' ? 'ماذا تم؟' : 'What was done?')),
               const SizedBox(height: 12),
-              TextField(
-                controller: costCtrl,
-                decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost', suffixText: 'SAR'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
+              TextField(controller: costCtrl, decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost', suffixText: 'SAR'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
               const SizedBox(height: 18),
               FilledButton(
                 onPressed: () {
+                  if (existing == null && !ensureMaintenanceAccess(context, ref)) {
+                    Navigator.pop(ctx);
+                    return;
+                  }
                   final cost = double.tryParse(costCtrl.text.trim());
                   if (selectedAssetId == null || descCtrl.text.trim().isEmpty || cost == null || cost < 0) return;
                   final record = MaintenanceRecord(
