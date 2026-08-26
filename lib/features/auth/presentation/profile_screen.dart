@@ -62,7 +62,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(user?.name ?? (lang == 'ar' ? 'ضيف' : 'Guest'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
                     Text(
-                      isGuest ? (lang == 'ar' ? 'حساب ضيف' : 'Guest account') : (email ?? ''),
+                      isGuest ? (lang == 'ar' ? 'حساب ضيف غير محفوظ' : 'Unprotected guest account') : (email ?? ''),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
@@ -84,8 +84,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: Text(lang == 'ar' ? 'احفظ حساب الضيف' : 'Protect your guest account', style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(
                     lang == 'ar'
-                        ? 'اربطه بحساب Google مع الاحتفاظ بنفس بيانات Home OS الحالية.'
-                        : 'Link it to Google while keeping the same Home OS data and identity.',
+                        ? 'اربطه بحساب Google مع الاحتفاظ بنفس بيانات Home OS الحالية. لن نسمح بتسجيل الخروج قبل حفظه حتى لا تفقد الوصول إلى بياناتك.'
+                        : 'Link it to Google while keeping the same Home OS data. Sign-out stays blocked until it is protected so you do not lose access to your data.',
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -115,8 +115,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ListTile(
                 leading: const Icon(Icons.logout_rounded),
                 title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(lang == 'ar' ? 'لن تُحذف بياناتك.' : 'Your data will not be deleted.'),
-                onTap: _isUpgrading ? null : () => _logout(lang),
+                subtitle: Text(
+                  isGuest
+                      ? (lang == 'ar' ? 'احفظ حساب الضيف أولًا حتى لا تفقد الوصول إلى بياناتك.' : 'Protect the guest account first so you do not lose access to your data.')
+                      : (lang == 'ar' ? 'لن تُحذف بياناتك.' : 'Your data will not be deleted.'),
+                ),
+                onTap: _isUpgrading ? null : () => _logout(lang, isGuest),
               ),
               const Divider(height: 1, indent: 56),
               ListTile(
@@ -142,6 +146,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     } on StateError catch (error) {
       if (!mounted) return;
+      if (error.message == 'GOOGLE_SIGN_IN_CANCELLED') return;
       final accountExists = error.message == 'GUEST_UPGRADE_ACCOUNT_EXISTS';
       await showDialog<void>(
         context: context,
@@ -151,8 +156,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           content: Text(
             accountExists
                 ? (lang == 'ar'
-                    ? 'حساب Google هذا مستخدم مسبقًا في Home OS. لم نغيّر حساب الضيف ولم نفقد أي بيانات. استخدم حساب Google آخر أو سجّل الخروج ثم ادخل بالحساب الموجود.'
-                    : 'This Google account is already used in Home OS. Your guest account was left unchanged and no data was lost. Use another Google account, or sign out and use the existing account.')
+                    ? 'حساب Google هذا مستخدم مسبقًا في Home OS. لم نغيّر حساب الضيف ولم نفقد أي بيانات. استخدم حساب Google آخر.'
+                    : 'This Google account is already used in Home OS. Your guest account was left unchanged and no data was lost. Use another Google account.')
                 : (lang == 'ar' ? 'تعذر إكمال الربط الآن. لم يتم تغيير بياناتك.' : 'The link could not be completed. Your data was not changed.'),
           ),
           actions: [
@@ -163,16 +168,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(lang == 'ar' ? 'تعذر الربط الآن. حاول مرة أخرى.' : 'Could not link right now. Please try again.')),
+        SnackBar(content: Text(lang == 'ar' ? 'تعذر الربط الآن. تحقق من الإنترنت ثم حاول مرة أخرى.' : 'Could not link right now. Check your connection and try again.')),
       );
     } finally {
       if (mounted) setState(() => _isUpgrading = false);
     }
   }
 
-  Future<void> _logout(String lang) async {
+  Future<void> _logout(String lang, bool isGuest) async {
+    if (isGuest) {
+      final protect = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AlertDialog(
+              icon: const Icon(Icons.shield_outlined),
+              title: Text(lang == 'ar' ? 'احفظ حساب الضيف قبل الخروج' : 'Protect your guest account first'),
+              content: Text(
+                lang == 'ar'
+                    ? 'بياناتك مرتبطة حاليًا بحساب ضيف مؤقت. تسجيل الخروج قد يجعلك غير قادر على العودة إلى نفس البيانات. اربط الحساب بـ Google أولًا وسنحتفظ بكل شيء كما هو.'
+                    : 'Your data is currently tied to a temporary guest identity. Signing out could prevent you from returning to the same data. Link Google first and everything will stay as it is.',
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(lang == 'ar' ? 'ربط مع Google' : 'Link Google')),
+              ],
+            ),
+          ) ??
+          false;
+      if (protect && mounted) await _upgradeGuest(lang);
+      return;
+    }
+
     final ok = await showDialog<bool>(
           context: context,
+          barrierDismissible: false,
           builder: (context) => AlertDialog(
             icon: const Icon(Icons.logout_rounded),
             title: Text(lang == 'ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out?'),
@@ -185,8 +214,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ) ??
         false;
     if (!ok) return;
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (mounted) context.go('/auth');
+
+    try {
+      await ref.read(authControllerProvider.notifier).signOut();
+      if (mounted) context.go('/auth');
+    } on StateError catch (error) {
+      if (!mounted || error.message != 'GUEST_ACCOUNT_NOT_LINKED') return;
+      await _logout(lang, true);
+    }
   }
 
   Future<void> _deleteAccount(String lang) async {
