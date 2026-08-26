@@ -75,10 +75,11 @@ class HomeScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _LocationCard(
+                locationId: location.id,
                 name: location.name.value(lang),
                 assets: assets.where((asset) => asset.locationId == location.id).toList(),
                 lang: lang,
-                onAddAsset: () => context.push('/asset/new'),
+                onAddAsset: () => context.push('/asset/new?locationId=${Uri.encodeComponent(location.id)}'),
                 onAssetTap: (id) => context.push('/asset/$id'),
               ),
             ),
@@ -214,8 +215,9 @@ class _StepDot extends StatelessWidget {
 }
 
 class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.name, required this.assets, required this.lang, required this.onAddAsset, required this.onAssetTap});
+  const _LocationCard({required this.locationId, required this.name, required this.assets, required this.lang, required this.onAddAsset, required this.onAssetTap});
 
+  final String locationId;
   final String name;
   final List<HomeAsset> assets;
   final String lang;
@@ -270,7 +272,7 @@ class _LocationCard extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(onPressed: onAddAsset, icon: const Icon(Icons.add_rounded), label: Text(lang == 'ar' ? 'إضافة أصل' : 'Add asset')),
+            child: TextButton.icon(onPressed: onAddAsset, icon: const Icon(Icons.add_rounded), label: Text(lang == 'ar' ? 'إضافة أصل هنا' : 'Add asset here')),
           ),
         ],
       ),
