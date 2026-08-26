@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
 import 'billing_contract.dart';
@@ -66,7 +67,6 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   GooglePlayPurchaseDetails? _androidUnlimitedPurchase;
-  GooglePlayPurchaseDetails? _androidMultiHomePurchase;
   bool _disposed = false;
 
   @override
@@ -196,12 +196,9 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
           final tier = _tierForProduct(purchase.productID);
           if (_rank(tier) > _rank(highestTier)) highestTier = tier;
 
-          if (purchase is GooglePlayPurchaseDetails) {
-            if (purchase.productID == SubscriptionProductIds.unlimitedMonthly) {
-              _androidUnlimitedPurchase = purchase;
-            } else if (purchase.productID == SubscriptionProductIds.multiHomeMonthly) {
-              _androidMultiHomePurchase = purchase;
-            }
+          if (purchase is GooglePlayPurchaseDetails &&
+              purchase.productID == SubscriptionProductIds.unlimitedMonthly) {
+            _androidUnlimitedPurchase = purchase;
           }
           break;
         case PurchaseStatus.error:
