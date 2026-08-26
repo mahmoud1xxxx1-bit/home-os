@@ -14,7 +14,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
-    final locations = ref.watch(locationsProvider);
+    final locations = ref.watch(homeRepositoryProvider).watchLocations();
     final assets = ref.watch(assetsProvider);
     final setupIncomplete = locations.isEmpty || assets.isEmpty;
     final destinations = [
