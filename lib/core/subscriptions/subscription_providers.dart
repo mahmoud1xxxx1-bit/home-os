@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/extended_repository_providers.dart';
 import '../services/local_repositories.dart';
 import 'entitlements.dart';
+import 'store_subscription_controller.dart';
 
 enum LimitedResource { home, asset, reminder, maintenance, warranty, document, provider }
 
 class AccessDecision {
-  const AccessDecision.allowed() : allowed = true, requiredTier = null, reasonKey = null;
+  const AccessDecision.allowed()
+      : allowed = true,
+        requiredTier = null,
+        reasonKey = null;
   const AccessDecision.blocked(this.requiredTier, this.reasonKey) : allowed = false;
 
   final bool allowed;
@@ -15,9 +19,11 @@ class AccessDecision {
   final String? reasonKey;
 }
 
-/// Temporary entitlement source until Google Play / App Store billing is wired.
-/// Billing will override only this provider; feature screens must not know about stores.
-final subscriptionTierProvider = Provider<SubscriptionTier>((ref) => SubscriptionTier.free);
+/// Single entitlement source for the whole app. Tests can override this
+/// provider without touching feature screens.
+final subscriptionTierProvider = Provider<SubscriptionTier>(
+  (ref) => ref.watch(storeSubscriptionControllerProvider).tier,
+);
 
 final subscriptionEntitlementProvider = Provider<SubscriptionEntitlement>(
   (ref) => SubscriptionEntitlement(tier: ref.watch(subscriptionTierProvider)),
@@ -53,10 +59,17 @@ final accessDecisionProvider = Provider.family<AccessDecision, LimitedResource>(
 
   if (allowed) return const AccessDecision.allowed();
 
-  // A second home is exclusively a Multi-Home entitlement. All other Free limits
-  // unlock on Unlimited. Unlimited users that hit the home limit need Multi-Home.
+  // A second home is exclusively a Multi-Home entitlement. All other Free
+  // limits unlock on Unlimited. Unlimited users that hit the one-home limit
+  // are directed to Multi-Home.
   if (resource == LimitedResource.home) {
-    return const AccessDecision.blocked(SubscriptionTier.multiHome, 'multi_home_required');
+    return const AccessDecision.blocked(
+      SubscriptionTier.multiHome,
+      'multi_home_required',
+    );
   }
-  return const AccessDecision.blocked(SubscriptionTier.unlimited, 'free_limit_reached');
+  return const AccessDecision.blocked(
+    SubscriptionTier.unlimited,
+    'free_limit_reached',
+  );
 });
