@@ -56,18 +56,45 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<LocalUser> signInWithProvider(AuthProviderType provider) async {
     if (provider == AuthProviderType.google) {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) throw Exception('Google Sign In aborted');
-      final googleAuth = await googleUser.authentication;
-      final credential = fb.GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      final cred = await _auth.signInWithCredential(credential);
-      return _mapUser(cred.user!);
+      return _signInOrUpgradeWithGoogle();
     }
 
+    final current = _auth.currentUser;
+    if (current != null && current.isAnonymous) return _mapUser(current);
+
     final cred = await _auth.signInAnonymously();
+    return _mapUser(cred.user!);
+  }
+
+  Future<LocalUser> _signInOrUpgradeWithGoogle() async {
+    final googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) throw Exception('Google Sign In aborted');
+
+    final googleAuth = await googleUser.authentication;
+    final credential = fb.GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final current = _auth.currentUser;
+    if (current != null && current.isAnonymous) {
+      try {
+        final linked = await current.linkWithCredential(credential);
+        return _mapUser(linked.user!);
+      } on fb.FirebaseAuthException catch (error) {
+        if (error.code == 'credential-already-in-use' ||
+            error.code == 'email-already-in-use' ||
+            error.code == 'provider-already-linked') {
+          await _googleSignIn.signOut();
+          throw StateError(
+            'GUEST_UPGRADE_ACCOUNT_EXISTS',
+          );
+        }
+        rethrow;
+      }
+    }
+
+    final cred = await _auth.signInWithCredential(credential);
     return _mapUser(cred.user!);
   }
 
