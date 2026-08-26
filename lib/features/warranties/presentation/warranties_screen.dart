@@ -129,93 +129,150 @@ class WarrantiesScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      useSafeArea: true,
+      showDragHandle: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(existing == null ? (lang == 'ar' ? 'إضافة ضمان' : 'Add warranty') : (lang == 'ar' ? 'تعديل الضمان' : 'Edit warranty'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              if (assets.isEmpty) ...[
-                AppCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.devices_other_rounded),
-                    title: Text(lang == 'ar' ? 'لا يوجد أصل لربط الضمان به' : 'There is no asset to link this warranty to'),
-                    subtitle: Text(lang == 'ar' ? 'أضف الأصل أولًا ثم سجّل ضمانه.' : 'Add the asset first, then record its warranty.'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    context.push('/asset/new');
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(lang == 'ar' ? 'إضافة أصل' : 'Add asset'),
-                ),
-              ] else ...[
-                DropdownButtonFormField<String>(
-                  initialValue: selectedAssetId,
-                  decoration: InputDecoration(labelText: lang == 'ar' ? 'الأصل' : 'Asset', prefixIcon: const Icon(Icons.devices_other_rounded)),
-                  items: assets.map((asset) => DropdownMenuItem(value: asset.id, child: Text(asset.name.value(lang)))).toList(),
-                  onChanged: (value) => selectedAssetId = value,
-                ),
-                const SizedBox(height: 12),
-                TextField(controller: providerCtrl, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'المزوّد أو الشركة' : 'Provider or company')),
-                const SizedBox(height: 12),
-                TextField(controller: numberCtrl, textInputAction: TextInputAction.done, decoration: InputDecoration(labelText: lang == 'ar' ? 'رقم الضمان' : 'Warranty number')),
-                const SizedBox(height: 12),
-                AppCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.event_outlined),
-                    title: Text(lang == 'ar' ? 'تاريخ انتهاء الضمان' : 'Warranty expiry'),
-                    subtitle: Text(compactDate(expiry, lang)),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(context: ctx, initialDate: expiry, firstDate: DateTime(2000), lastDate: DateTime.now().add(const Duration(days: 3650)));
-                        if (picked != null) setSheetState(() => expiry = picked);
-                      },
-                      child: Text(lang == 'ar' ? 'تغيير' : 'Change'),
+        builder: (ctx, setSheetState) {
+          final keyboard = MediaQuery.viewInsetsOf(ctx).bottom;
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: keyboard),
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: keyboard > 0 ? .92 : .78,
+              minChildSize: .55,
+              maxChildSize: .94,
+              builder: (ctx, scrollController) => Material(
+                color: Theme.of(ctx).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(color: Theme.of(ctx).colorScheme.outlineVariant, borderRadius: BorderRadius.circular(99)),
                     ),
-                  ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              existing == null ? (lang == 'ar' ? 'إضافة ضمان' : 'Add warranty') : (lang == 'ar' ? 'تعديل الضمان' : 'Edit warranty'),
+                              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              lang == 'ar' ? 'اربط الضمان بالأصل الصحيح وسنتابع تاريخ انتهائه تلقائيًا.' : 'Link the warranty to the right asset and we will track its expiry automatically.',
+                              style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant, height: 1.45),
+                            ),
+                            const SizedBox(height: 18),
+                            if (assets.isEmpty) ...[
+                              AppCard(
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.devices_other_rounded),
+                                  title: Text(lang == 'ar' ? 'لا يوجد أصل لربط الضمان به' : 'There is no asset to link this warranty to'),
+                                  subtitle: Text(lang == 'ar' ? 'أضف الأصل أولًا ثم سجّل ضمانه.' : 'Add the asset first, then record its warranty.'),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  context.push('/asset/new');
+                                },
+                                icon: const Icon(Icons.add_rounded),
+                                label: Text(lang == 'ar' ? 'إضافة أصل' : 'Add asset'),
+                              ),
+                            ] else ...[
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedAssetId,
+                                decoration: InputDecoration(labelText: lang == 'ar' ? 'الأصل' : 'Asset', prefixIcon: const Icon(Icons.devices_other_rounded)),
+                                items: assets.map((asset) => DropdownMenuItem(value: asset.id, child: Text(asset.name.value(lang)))).toList(),
+                                onChanged: (value) => selectedAssetId = value,
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: providerCtrl,
+                                autofocus: true,
+                                textInputAction: TextInputAction.next,
+                                decoration: InputDecoration(labelText: lang == 'ar' ? 'المزوّد أو الشركة' : 'Provider or company'),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: numberCtrl,
+                                textInputAction: TextInputAction.done,
+                                decoration: InputDecoration(labelText: lang == 'ar' ? 'رقم الضمان' : 'Warranty number'),
+                              ),
+                              const SizedBox(height: 12),
+                              AppCard(
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.event_outlined),
+                                  title: Text(lang == 'ar' ? 'تاريخ انتهاء الضمان' : 'Warranty expiry'),
+                                  subtitle: Text(compactDate(expiry, lang)),
+                                  trailing: TextButton(
+                                    onPressed: () async {
+                                      FocusScope.of(ctx).unfocus();
+                                      final picked = await showDatePicker(
+                                        context: ctx,
+                                        initialDate: expiry,
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                                      );
+                                      if (picked != null) setSheetState(() => expiry = picked);
+                                    },
+                                    child: Text(lang == 'ar' ? 'تغيير' : 'Change'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Align(alignment: AlignmentDirectional.centerStart, child: _WarrantyBadge(status: _statusFor(expiry), lang: lang)),
+                              const SizedBox(height: 20),
+                              FilledButton(
+                                onPressed: () {
+                                  if (existing == null && !ensureWarrantyAccess(context, ref)) {
+                                    Navigator.pop(ctx);
+                                    return;
+                                  }
+                                  if (selectedAssetId == null || providerCtrl.text.trim().isEmpty) return;
+                                  final now = DateTime.now();
+                                  final warranty = Warranty(
+                                    id: existing?.id ?? 'warranty-${now.microsecondsSinceEpoch}',
+                                    assetId: selectedAssetId!,
+                                    start: existing?.start ?? now,
+                                    end: expiry,
+                                    provider: providerCtrl.text.trim(),
+                                    number: numberCtrl.text.trim().isEmpty ? '-' : numberCtrl.text.trim(),
+                                    status: _statusFor(expiry),
+                                    documentPlaceholder: existing?.documentPlaceholder,
+                                  );
+                                  ref.read(warrantyRepositoryProvider).upsertWarranty(warranty);
+                                  ref.invalidate(warrantiesProvider);
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(lang == 'ar' ? 'تم حفظ الضمان وربطه بالأصل' : 'Warranty saved and linked to the asset')),
+                                  );
+                                },
+                                child: Text(lang == 'ar' ? 'حفظ الضمان' : 'Save warranty'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Align(alignment: AlignmentDirectional.centerStart, child: _WarrantyBadge(status: _statusFor(expiry), lang: lang)),
-                const SizedBox(height: 18),
-                FilledButton(
-                  onPressed: () {
-                    if (existing == null && !ensureWarrantyAccess(context, ref)) {
-                      Navigator.pop(ctx);
-                      return;
-                    }
-                    if (selectedAssetId == null || providerCtrl.text.trim().isEmpty) return;
-                    final now = DateTime.now();
-                    final warranty = Warranty(
-                      id: existing?.id ?? 'warranty-${now.microsecondsSinceEpoch}',
-                      assetId: selectedAssetId!,
-                      start: existing?.start ?? now,
-                      end: expiry,
-                      provider: providerCtrl.text.trim(),
-                      number: numberCtrl.text.trim().isEmpty ? '-' : numberCtrl.text.trim(),
-                      status: _statusFor(expiry),
-                      documentPlaceholder: existing?.documentPlaceholder,
-                    );
-                    ref.read(warrantyRepositoryProvider).upsertWarranty(warranty);
-                    ref.invalidate(warrantiesProvider);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ الضمان وربطه بالأصل' : 'Warranty saved and linked to the asset')));
-                  },
-                  child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
-                ),
-              ],
-            ],
-          ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
