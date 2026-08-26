@@ -1,0 +1,116 @@
+name: Home OS One-Shot Test APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/android-test-apk-once.yml'
+
+jobs:
+  build-test-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Validate Firebase config secret
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "Missing GitHub secret: GOOGLE_SERVICES_JSON_BASE64"
+            exit 1
+          fi
+
+      - name: Restore Firebase Android config
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+
+      - name: Restore dedicated test signing key
+        run: |
+          base64 --decode android/test-signing-keystore.b64 > android/app/test-signing-keystore.jks
+          cat > android/key.properties <<'EOF'
+          storePassword=homeos-test-only
+          keyPassword=homeos-test-only
+          keyAlias=homeos-test
+          storeFile=test-signing-keystore.jks
+          EOF
+
+      - name: Verify Google OAuth signing certificate
+        run: |
+          SIGNING_SHA1=$(keytool -list -v \
+            -keystore android/app/test-signing-keystore.jks \
+            -storepass homeos-test-only \
+            -alias homeos-test \
+            | awk -F': ' '/SHA1:/{print $2; exit}')
+          echo "Home OS test APK SHA-1: $SIGNING_SHA1"
+          export SIGNING_SHA1
+          python3 - <<'PY'
+          import json, os, sys
+          package_name = 'com.fanaan.homeos'
+          signing_sha1 = os.environ['SIGNING_SHA1'].replace(':', '').upper()
+          with open('android/app/google-services.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+          android_hashes = set()
+          has_web_client = False
+          package_found = False
+          for client in config.get('client', []):
+              info = client.get('client_info', {}).get('android_client_info', {})
+              if info.get('package_name') != package_name:
+                  continue
+              package_found = True
+              for oauth in client.get('oauth_client', []):
+                  client_type = oauth.get('client_type')
+                  if client_type == 3:
+                      has_web_client = True
+                  if client_type == 1:
+                      android_info = oauth.get('android_info', {})
+                      if android_info.get('package_name') == package_name:
+                          cert = (android_info.get('certificate_hash') or '').replace(':', '').upper()
+                          if cert:
+                              android_hashes.add(cert)
+          if not package_found:
+              sys.exit(f'Firebase config has no Android client for {package_name}.')
+          if not has_web_client:
+              sys.exit('Firebase config has no Web OAuth client required by Google Sign-In.')
+          if signing_sha1 not in android_hashes:
+              known = ', '.join(sorted(android_hashes)) or 'none'
+              sys.exit(f'Google OAuth SHA-1 mismatch. Registered Android SHA-1 values: {known}')
+          print('GOOGLE_OAUTH_MATCH=true')
+          PY
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
+
+      - name: Test
+        run: flutter test
+
+      - name: Build signed test APK
+        run: flutter build apk --release
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-os-test-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
