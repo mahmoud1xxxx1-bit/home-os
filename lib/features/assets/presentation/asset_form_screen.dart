@@ -10,7 +10,9 @@ import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
 
 class AssetFormScreen extends ConsumerStatefulWidget {
-  const AssetFormScreen({super.key});
+  const AssetFormScreen({super.key, this.initialLocationId});
+
+  final String? initialLocationId;
 
   @override
   ConsumerState<AssetFormScreen> createState() => _AssetFormScreenState();
@@ -30,6 +32,12 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _locationId = widget.initialLocationId;
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _brand.dispose();
@@ -45,7 +53,9 @@ class _AssetFormScreenState extends ConsumerState<AssetFormScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
     final locations = ref.watch(homeRepositoryProvider).watchLocations();
-    _locationId ??= locations.isEmpty ? null : locations.first.id;
+    if (locations.isNotEmpty && !locations.any((location) => location.id == _locationId)) {
+      _locationId = locations.first.id;
+    }
 
     return ResponsivePage(
       title: l10n.addAsset,
