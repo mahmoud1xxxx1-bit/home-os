@@ -5,6 +5,7 @@ import '../../../core/services/app_models.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/subscriptions/subscription_gate.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_form_sheet.dart';
 import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -98,53 +99,59 @@ class ProvidersScreen extends ConsumerWidget {
     final lang = Localizations.localeOf(context).languageCode;
     final nameCtrl = TextEditingController(text: provider?.name);
     final phoneCtrl = TextEditingController(text: provider?.phone);
-    showModalBottomSheet<void>(
+
+    showAppFormSheet<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(provider == null ? (lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider') : (lang == 'ar' ? 'تعديل مقدم الخدمة' : 'Edit provider'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            TextField(controller: nameCtrl, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'الاسم' : 'Name', prefixIcon: const Icon(Icons.person_outline_rounded))),
-            const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, keyboardType: TextInputType.phone, textInputAction: TextInputAction.done, decoration: InputDecoration(labelText: lang == 'ar' ? 'رقم الهاتف' : 'Phone', prefixIcon: const Icon(Icons.phone_outlined))),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  if (provider == null && !ensureProviderAccess(context, ref)) {
-                    Navigator.pop(ctx);
-                    return;
-                  }
-                  ref.read(providerRepositoryProvider).upsertProvider(
-                        ProviderContact(
-                          id: provider?.id ?? 'p-${DateTime.now().microsecondsSinceEpoch}',
-                          name: nameCtrl.text.trim(),
-                          type: provider?.type ?? const LocalizedText(ar: 'عام', en: 'General'),
-                          phone: phoneCtrl.text.trim(),
-                          whatsApp: provider?.whatsApp ?? phoneCtrl.text.trim(),
-                          visitCount: provider?.visitCount ?? 0,
-                          totalPaid: provider?.totalPaid ?? 0,
-                          lastVisit: provider?.lastVisit ?? DateTime.now(),
-                          linkedAssetIds: provider?.linkedAssetIds ?? const [],
-                        ),
-                      );
-                  ref.invalidate(providersProvider);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ مقدم الخدمة' : 'Provider saved')));
-                },
-                child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
-              ),
-            ),
-          ],
-        ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            provider == null ? (lang == 'ar' ? 'إضافة مقدم خدمة' : 'Add provider') : (lang == 'ar' ? 'تعديل مقدم الخدمة' : 'Edit provider'),
+            style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameCtrl,
+            autofocus: true,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(labelText: lang == 'ar' ? 'الاسم' : 'Name', prefixIcon: const Icon(Icons.person_outline_rounded)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: phoneCtrl,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(labelText: lang == 'ar' ? 'رقم الهاتف' : 'Phone', prefixIcon: const Icon(Icons.phone_outlined)),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty) return;
+              if (provider == null && !ensureProviderAccess(context, ref)) {
+                Navigator.pop(ctx);
+                return;
+              }
+              ref.read(providerRepositoryProvider).upsertProvider(
+                    ProviderContact(
+                      id: provider?.id ?? 'p-${DateTime.now().microsecondsSinceEpoch}',
+                      name: nameCtrl.text.trim(),
+                      type: provider?.type ?? const LocalizedText(ar: 'عام', en: 'General'),
+                      phone: phoneCtrl.text.trim(),
+                      whatsApp: provider?.whatsApp ?? phoneCtrl.text.trim(),
+                      visitCount: provider?.visitCount ?? 0,
+                      totalPaid: provider?.totalPaid ?? 0,
+                      lastVisit: provider?.lastVisit ?? DateTime.now(),
+                      linkedAssetIds: provider?.linkedAssetIds ?? const [],
+                    ),
+                  );
+              ref.invalidate(providersProvider);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ مقدم الخدمة' : 'Provider saved')));
+            },
+            child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
+          ),
+        ],
       ),
     );
   }
