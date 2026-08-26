@@ -115,16 +115,10 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                         ),
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      tooltip: lang == 'ar' ? 'خيارات' : 'Options',
-                      onSelected: (value) {
-                        if (value == 'edit') _showForm(context, record);
-                        if (value == 'delete') _deleteRecord(context, record, lang);
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem(value: 'edit', child: Text(lang == 'ar' ? 'تعديل' : 'Edit')),
-                        PopupMenuItem(value: 'delete', child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
-                      ],
+                    IconButton(
+                      tooltip: lang == 'ar' ? 'تعديل السجل' : 'Edit record',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _showForm(context, record),
                     ),
                   ],
                 ),
@@ -140,33 +134,6 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
       if (asset.id == assetId) return asset.name.value(lang);
     }
     return lang == 'ar' ? 'أصل غير متاح' : 'Unavailable asset';
-  }
-
-  Future<void> _deleteRecord(BuildContext context, MaintenanceRecord record, String lang) async {
-    final ok = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            icon: Icon(Icons.delete_outline_rounded, color: Theme.of(dialogContext).colorScheme.error),
-            title: Text(lang == 'ar' ? 'حذف سجل الصيانة؟' : 'Delete maintenance record?'),
-            content: Text(
-              lang == 'ar'
-                  ? 'سيُحذف هذا السجل من تاريخ الأصل. لن يتم حذف الأصل نفسه.'
-                  : 'This record will be removed from the asset history. The asset itself will not be deleted.',
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Theme.of(dialogContext).colorScheme.error),
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(lang == 'ar' ? 'حذف السجل' : 'Delete record'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-    if (!ok) return;
-    ref.read(maintenanceRepositoryProvider).deleteMaintenance(record.id);
-    ref.invalidate(maintenanceProvider);
   }
 
   void _showDetails(BuildContext context, MaintenanceRecord record, String assetName, String lang) {
