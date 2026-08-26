@@ -20,7 +20,7 @@ import '../../features/reminders/presentation/schedule_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
 import '../../features/settings/presentation/feature_management_screen.dart';
 import '../../features/settings/presentation/global_search_screen.dart';
-import '../../features/settings/presentation/more_screen.dart';
+import '../../features/settings/presentation/settings_hub_screen.dart';
 import '../../features/subscriptions/presentation/paywall_screen.dart';
 import '../../features/warranties/presentation/warranties_screen.dart';
 import 'app_shell.dart';
@@ -48,7 +48,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [GoRoute(path: '/house', builder: (context, state) => const HomeScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/schedule', builder: (context, state) => const ScheduleScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/activity', builder: (context, state) => const ActivityScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/more', builder: (context, state) => const MoreScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/more', builder: (context, state) => const SettingsHubScreen())]),
         ],
       ),
       GoRoute(path: '/asset/new', builder: (context, state) => const AssetFormScreen()),
