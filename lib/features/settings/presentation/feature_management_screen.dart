@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/app_models.dart';
 import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_gate.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
 
@@ -18,7 +19,7 @@ class FeatureManagementScreen extends ConsumerWidget {
     final lang = Localizations.localeOf(context).languageCode;
     final canAdd = feature == 'homes' || feature == 'locations' || feature == 'assets' || feature == 'reminders';
     return ResponsivePage(
-      title: _title(feature, lang),
+      title: _title(lang),
       actions: [
         if (canAdd)
           IconButton(
@@ -28,56 +29,60 @@ class FeatureManagementScreen extends ConsumerWidget {
           ),
       ],
       children: [
-        _intro(context, lang),
+        Text(_intro(lang), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5)),
         const SizedBox(height: 14),
         _body(context, ref, lang),
       ],
     );
   }
 
-  Widget _intro(BuildContext context, String lang) {
-    final text = switch (feature) {
-      'homes' => lang == 'ar' ? 'أدر المنازل المرتبطة بحسابك واختر أسماء واضحة لها.' : 'Manage homes linked to your account and keep their names clear.',
-      'locations' => lang == 'ar' ? 'قسّم المنزل إلى غرف أو مواقع لتعرف مكان كل أصل.' : 'Create rooms or locations so every asset has a clear place.',
-      'assets' => lang == 'ar' ? 'جميع الأجهزة والممتلكات التي تتابعها داخل Home OS.' : 'All devices and belongings tracked in Home OS.',
-      'reminders' => lang == 'ar' ? 'تابع المواعيد القادمة والمتأخرة من مكان واحد.' : 'Keep upcoming and overdue reminders in one place.',
-      'reports' => lang == 'ar' ? 'ملخص بسيط يساعدك على فهم تكلفة منزلك وما يحتاج انتباهك.' : 'A simple summary of home costs and items that need attention.',
-      'help' => lang == 'ar' ? 'شرح سريع لأهم أقسام Home OS وكيف تستخدمها.' : 'Quick guidance for the main Home OS sections.',
-      _ => lang == 'ar' ? 'إدارة هذا القسم.' : 'Manage this section.',
-    };
-    return Text(text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5));
-  }
+  String _intro(String lang) => switch (feature) {
+        'homes' => lang == 'ar' ? 'أدر المنازل المرتبطة بحسابك. المنزل الثاني وما بعده يحتاج إلى Multi‑Home.' : 'Manage homes linked to your account. A second home requires Multi‑Home.',
+        'locations' => lang == 'ar' ? 'قسّم المنزل إلى غرف أو مواقع لتعرف مكان كل أصل.' : 'Create rooms or locations so every asset has a clear place.',
+        'assets' => lang == 'ar' ? 'جميع الأجهزة والممتلكات التي تتابعها داخل Home OS.' : 'All devices and belongings tracked in Home OS.',
+        'reminders' => lang == 'ar' ? 'تابع المواعيد القادمة والمتأخرة من مكان واحد.' : 'Keep upcoming and overdue reminders in one place.',
+        'reports' => lang == 'ar' ? 'ملخص بسيط يساعدك على فهم تكلفة منزلك وما يحتاج انتباهك.' : 'A simple summary of home costs and items that need attention.',
+        'help' => lang == 'ar' ? 'شرح سريع لأهم أقسام Home OS وكيف تستخدمها.' : 'Quick guidance for the main Home OS sections.',
+        _ => lang == 'ar' ? 'إدارة هذا القسم.' : 'Manage this section.',
+      };
 
-  Widget _body(BuildContext context, WidgetRef ref, String lang) {
-    return switch (feature) {
-      'homes' => _homes(context, ref, lang),
-      'locations' => _locations(context, ref, lang),
-      'assets' => _assets(context, ref, lang),
-      'reminders' => _reminders(context, ref, lang),
-      'reports' => _reports(context, ref, lang),
-      'help' => _help(context, lang),
-      _ => AppCard(
-          child: ListTile(
-            leading: const Icon(Icons.info_outline_rounded),
-            title: Text(lang == 'ar' ? 'هذا القسم له شاشة مخصصة' : 'This section has a dedicated screen'),
-          ),
-        ),
-    };
-  }
+  Widget _body(BuildContext context, WidgetRef ref, String lang) => switch (feature) {
+        'homes' => _homes(context, ref, lang),
+        'locations' => _locations(context, ref, lang),
+        'assets' => _assets(context, ref, lang),
+        'reminders' => _reminders(context, ref, lang),
+        'reports' => _reports(context, ref, lang),
+        'help' => _help(context, lang),
+        _ => AppCard(child: ListTile(leading: const Icon(Icons.info_outline_rounded), title: Text(lang == 'ar' ? 'هذا القسم له شاشة مخصصة' : 'This section has a dedicated screen'))),
+      };
 
   Widget _homes(BuildContext context, WidgetRef ref, String lang) {
-    final homes = ref.watch(homeRepositoryProvider).watchHomes();
+    final homes = ref.watch(homesProvider);
     if (homes.isEmpty) {
       return EmptyState(
         icon: Icons.home_work_rounded,
         title: lang == 'ar' ? 'لا توجد منازل' : 'No homes yet',
-        message: lang == 'ar' ? 'أضف المنزل الذي تريد تنظيمه.' : 'Add the home you want to organize.',
+        message: lang == 'ar' ? 'أضف منزلك الأول مجانًا.' : 'Add your first home for free.',
         actionLabel: lang == 'ar' ? 'إضافة منزل' : 'Add home',
-        onAction: () => _addNamedItem(context, ref, lang, 'homes'),
+        onAction: () => _addHome(context, ref, lang),
       );
     }
+
     return Column(
       children: [
+        AppCard(
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.workspace_premium_outlined),
+            title: Text(lang == 'ar' ? 'إضافة منزل آخر' : 'Add another home'),
+            subtitle: Text(lang == 'ar' ? 'تحتاج باقة Multi‑Home بسعر 35$ شهريًا.' : r'Requires Multi‑Home at $35/month.'),
+            trailing: FilledButton.tonal(
+              onPressed: () => _addHome(context, ref, lang),
+              child: Text(lang == 'ar' ? 'إضافة' : 'Add'),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         for (final home in homes)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -105,8 +110,7 @@ class FeatureManagementScreen extends ConsumerWidget {
   }
 
   Widget _locations(BuildContext context, WidgetRef ref, String lang) {
-    final homeRepo = ref.watch(homeRepositoryProvider);
-    final locations = homeRepo.watchLocations();
+    final locations = ref.watch(locationsProvider);
     final assets = ref.watch(assetsProvider);
     if (locations.isEmpty) {
       return EmptyState(
@@ -114,7 +118,7 @@ class FeatureManagementScreen extends ConsumerWidget {
         title: lang == 'ar' ? 'لا توجد مواقع' : 'No locations yet',
         message: lang == 'ar' ? 'أضف غرفة أو موقعًا لتصنيف الأصول.' : 'Add a room or location to organize assets.',
         actionLabel: lang == 'ar' ? 'إضافة موقع' : 'Add location',
-        onAction: () => _addNamedItem(context, ref, lang, 'locations'),
+        onAction: () => _addLocation(context, ref, lang),
       );
     }
     return Column(
@@ -170,11 +174,7 @@ class FeatureManagementScreen extends ConsumerWidget {
                 leading: Icon(asset.vehicle == null ? Icons.devices_other_rounded : Icons.directions_car_rounded),
                 title: Text(asset.name.value(lang), style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(asset.vehicle == null ? asset.category.name : '${asset.vehicle!.odometerKm} km'),
-                trailing: IconButton(
-                  tooltip: lang == 'ar' ? 'أرشفة' : 'Archive',
-                  icon: const Icon(Icons.archive_outlined),
-                  onPressed: () => _archiveAsset(context, ref, asset, lang),
-                ),
+                trailing: IconButton(tooltip: lang == 'ar' ? 'أرشفة' : 'Archive', icon: const Icon(Icons.archive_outlined), onPressed: () => _archiveAsset(context, ref, asset, lang)),
               ),
             ),
           ),
@@ -220,18 +220,9 @@ class FeatureManagementScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (overdue.isNotEmpty) ...[
-          SectionTitle(lang == 'ar' ? 'متأخرة' : 'Overdue'),
-          ...overdue.map((r) => _reminderCard(context, r, lang, danger: true)),
-        ],
-        if (upcoming.isNotEmpty) ...[
-          SectionTitle(lang == 'ar' ? 'قادمة' : 'Upcoming'),
-          ...upcoming.map((r) => _reminderCard(context, r, lang)),
-        ],
-        if (completed.isNotEmpty) ...[
-          SectionTitle(lang == 'ar' ? 'مكتملة' : 'Completed'),
-          ...completed.map((r) => _reminderCard(context, r, lang)),
-        ],
+        if (overdue.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'متأخرة' : 'Overdue'), ...overdue.map((r) => _reminderCard(context, r, lang, danger: true))],
+        if (upcoming.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'قادمة' : 'Upcoming'), ...upcoming.map((r) => _reminderCard(context, r, lang))],
+        if (completed.isNotEmpty) ...[SectionTitle(lang == 'ar' ? 'مكتملة' : 'Completed'), ...completed.map((r) => _reminderCard(context, r, lang))],
       ],
     );
   }
@@ -257,7 +248,6 @@ class FeatureManagementScreen extends ConsumerWidget {
     final maintenanceTotal = maintenance.fold<double>(0, (sum, e) => sum + e.cost);
     final expiring = warranties.where((w) => w.status == WarrantyStatus.expiringSoon).length;
     final attention = reminders.where((r) => !r.isDone).length;
-
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 700 ? 4 : 2,
       shrinkWrap: true,
@@ -287,14 +277,7 @@ class FeatureManagementScreen extends ConsumerWidget {
         for (final topic in topics)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: AppCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(topic.$1, color: Theme.of(context).colorScheme.primary),
-                title: Text(topic.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(topic.$3),
-              ),
-            ),
+            child: AppCard(child: ListTile(contentPadding: EdgeInsets.zero, leading: Icon(topic.$1, color: Theme.of(context).colorScheme.primary), title: Text(topic.$2, style: const TextStyle(fontWeight: FontWeight.w700)), subtitle: Text(topic.$3))),
           ),
       ],
     );
@@ -305,23 +288,31 @@ class FeatureManagementScreen extends ConsumerWidget {
       context.push('/asset/new');
     } else if (feature == 'reminders') {
       _addReminder(context, ref, lang);
+    } else if (feature == 'homes') {
+      _addHome(context, ref, lang);
     } else {
-      _addNamedItem(context, ref, lang, feature);
+      _addLocation(context, ref, lang);
     }
   }
 
-  Future<void> _addNamedItem(BuildContext context, WidgetRef ref, String lang, String kind) async {
-    final value = await _nameDialog(context, lang, title: kind == 'homes' ? (lang == 'ar' ? 'إضافة منزل' : 'Add home') : (lang == 'ar' ? 'إضافة موقع' : 'Add location'));
+  Future<void> _addHome(BuildContext context, WidgetRef ref, String lang) async {
+    if (!ensureHomeAccess(context, ref)) return;
+    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'إضافة منزل' : 'Add home');
+    if (value == null || value.trim().isEmpty) return;
+    if (!ensureHomeAccess(context, ref)) return;
+    final now = DateTime.now();
+    ref.read(homeRepositoryProvider).upsertHome(HomeProfile(id: 'home-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), type: const LocalizedText(ar: 'منزل', en: 'Home'), createdAt: now));
+  }
+
+  Future<void> _addLocation(BuildContext context, WidgetRef ref, String lang) async {
+    final value = await _nameDialog(context, lang, title: lang == 'ar' ? 'إضافة موقع' : 'Add location');
     if (value == null || value.trim().isEmpty) return;
     final now = DateTime.now();
-    if (kind == 'homes') {
-      ref.read(homeRepositoryProvider).upsertHome(HomeProfile(id: 'home-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), type: const LocalizedText(ar: 'منزل', en: 'Home'), createdAt: now));
-    } else {
-      ref.read(homeRepositoryProvider).upsertLocation(LocationArea(id: 'location-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), icon: 'room'));
-    }
+    ref.read(homeRepositoryProvider).upsertLocation(LocationArea(id: 'location-${now.microsecondsSinceEpoch}', name: LocalizedText(ar: value, en: value), icon: 'room'));
   }
 
   void _addReminder(BuildContext context, WidgetRef ref, String lang) {
+    if (!ensureReminderAccess(context, ref)) return;
     final controller = TextEditingController();
     showModalBottomSheet<void>(
       context: context,
@@ -342,17 +333,12 @@ class FeatureManagementScreen extends ConsumerWidget {
               child: FilledButton(
                 onPressed: () {
                   if (controller.text.trim().isEmpty) return;
+                  if (!ensureReminderAccess(context, ref)) {
+                    Navigator.pop(ctx);
+                    return;
+                  }
                   final now = DateTime.now();
-                  ref.read(reminderRepositoryProvider).addReminder(
-                        Reminder(
-                          id: 'reminder-${now.microsecondsSinceEpoch}',
-                          title: LocalizedText(ar: controller.text.trim(), en: controller.text.trim()),
-                          type: ReminderType.oneTime,
-                          assetId: null,
-                          dueDate: now.add(const Duration(days: 1)),
-                          alertOffset: AlertOffset.oneDay,
-                        ),
-                      );
+                  ref.read(reminderRepositoryProvider).addReminder(Reminder(id: 'reminder-${now.microsecondsSinceEpoch}', title: LocalizedText(ar: controller.text.trim(), en: controller.text.trim()), type: ReminderType.oneTime, assetId: null, dueDate: now.add(const Duration(days: 1)), alertOffset: AlertOffset.oneDay));
                   ref.invalidate(remindersProvider);
                   Navigator.pop(ctx);
                 },
@@ -378,32 +364,24 @@ class FeatureManagementScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteHome(BuildContext context, WidgetRef ref, HomeProfile home, String lang) async {
-    if (!await _confirm(context, lang, lang == 'ar' ? 'حذف المنزل؟' : 'Delete home?', lang == 'ar' ? 'سيتم حذف ${home.name.value(lang)}. تأكد أنه لا يحتوي بيانات تحتاجها.' : '${home.name.value(lang)} will be removed. Make sure you no longer need its data.')) return;
+    if (!await _confirm(context, lang == 'ar' ? 'حذف المنزل؟' : 'Delete home?', lang == 'ar' ? 'سيتم حذف ${home.name.value(lang)}. تأكد أنه لا يحتوي بيانات تحتاجها.' : '${home.name.value(lang)} will be removed. Make sure you no longer need its data.', lang)) return;
     ref.read(homeRepositoryProvider).deleteHome(home.id);
   }
 
   Future<void> _deleteLocation(BuildContext context, WidgetRef ref, LocationArea location, String lang) async {
-    if (!await _confirm(context, lang, lang == 'ar' ? 'حذف الموقع؟' : 'Delete location?', lang == 'ar' ? 'تأكد من نقل الأصول المرتبطة بهذا الموقع أولًا.' : 'Move any linked assets before deleting this location.')) return;
+    if (!await _confirm(context, lang == 'ar' ? 'حذف الموقع؟' : 'Delete location?', lang == 'ar' ? 'تأكد من نقل الأصول المرتبطة بهذا الموقع أولًا.' : 'Move any linked assets before deleting this location.', lang)) return;
     ref.read(homeRepositoryProvider).deleteLocation(location.id);
   }
 
   void _archiveAsset(BuildContext context, WidgetRef ref, HomeAsset asset, String lang) {
     final removed = ref.read(assetRepositoryProvider).softDeleteAsset(asset.id);
     ref.invalidate(assetsProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'),
-        action: SnackBarAction(
-          label: lang == 'ar' ? 'تراجع' : 'Undo',
-          onPressed: () {
-            if (removed != null) {
-              ref.read(assetRepositoryProvider).restoreAsset(removed);
-              ref.invalidate(assetsProvider);
-            }
-          },
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'), action: SnackBarAction(label: lang == 'ar' ? 'تراجع' : 'Undo', onPressed: () {
+      if (removed != null) {
+        ref.read(assetRepositoryProvider).restoreAsset(removed);
+        ref.invalidate(assetsProvider);
+      }
+    })));
   }
 
   Future<String?> _nameDialog(BuildContext context, String lang, {required String title, String? initial}) {
@@ -421,7 +399,7 @@ class FeatureManagementScreen extends ConsumerWidget {
     );
   }
 
-  Future<bool> _confirm(BuildContext context, String lang, String title, String message) async =>
+  Future<bool> _confirm(BuildContext context, String title, String message, String lang) async =>
       await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -432,10 +410,9 @@ class FeatureManagementScreen extends ConsumerWidget {
             FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'تأكيد' : 'Confirm')),
           ],
         ),
-      ) ??
-      false;
+      ) ?? false;
 
-  String _title(String feature, String lang) => switch (feature) {
+  String _title(String lang) => switch (feature) {
         'homes' => lang == 'ar' ? 'المنازل' : 'Homes',
         'locations' => lang == 'ar' ? 'المواقع والغرف' : 'Locations & rooms',
         'assets' => lang == 'ar' ? 'الأصول' : 'Assets',
