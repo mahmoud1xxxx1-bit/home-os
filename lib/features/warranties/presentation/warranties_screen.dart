@@ -55,29 +55,55 @@ class WarrantiesScreen extends ConsumerWidget {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AppCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: _StatusIcon(status: currentStatus),
-                  title: Text(warranty.provider, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('$assetName • ${lang == 'ar' ? 'رقم' : 'No.'} ${warranty.number}\n${lang == 'ar' ? 'ينتهي' : 'Expires'}: ${compactDate(warranty.end, lang)}'),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _WarrantyBadge(status: currentStatus, lang: lang),
-                      const SizedBox(height: 4),
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        onSelected: (value) {
-                          if (value == 'edit') _showForm(context, ref, warranty, lang);
-                          if (value == 'delete') _delete(context, ref, warranty, lang);
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(value: 'edit', child: Text(lang == 'ar' ? 'تعديل' : 'Edit')),
-                          PopupMenuItem(value: 'delete', child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: _StatusIcon(status: currentStatus),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            warranty.provider,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '$assetName • ${lang == 'ar' ? 'رقم' : 'No.'} ${warranty.number}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${lang == 'ar' ? 'ينتهي' : 'Expires'}: ${compactDate(warranty.end, lang)}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          ),
+                          const SizedBox(height: 10),
+                          _WarrantyBadge(status: currentStatus, lang: lang),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 4),
+                    PopupMenuButton<String>(
+                      tooltip: lang == 'ar' ? 'خيارات الضمان' : 'Warranty options',
+                      padding: EdgeInsets.zero,
+                      onSelected: (value) {
+                        if (value == 'edit') _showForm(context, ref, warranty, lang);
+                        if (value == 'delete') _delete(context, ref, warranty, lang);
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(value: 'edit', child: Text(lang == 'ar' ? 'تعديل' : 'Edit')),
+                        PopupMenuItem(value: 'delete', child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             );
