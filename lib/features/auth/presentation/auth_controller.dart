@@ -38,6 +38,13 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> signOut() async {
+    // Anonymous Firebase users cannot reliably recover the same UID after sign-out.
+    // Blocking sign-out here prevents orphaning Home OS data behind an unreachable
+    // guest identity. The UI should guide guests to link Google first.
+    if (state.user?.provider == AuthProviderType.anonymous) {
+      throw StateError('GUEST_ACCOUNT_NOT_LINKED');
+    }
+
     await ref.read(authRepositoryProvider).signOut();
     state = state.copyWith(clearUser: true);
   }
