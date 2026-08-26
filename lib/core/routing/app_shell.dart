@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,75 +29,117 @@ class AppShell extends ConsumerWidget {
       _Destination(lang == 'ar' ? 'الإعدادات' : 'Settings', Icons.settings_rounded),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final desktop = constraints.maxWidth >= 900;
-        final extendedRail = constraints.maxWidth >= 1180;
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
 
-        return Scaffold(
-          body: Row(
-            children: [
-              if (desktop)
-                NavigationRail(
-                  selectedIndex: navigationShell.currentIndex,
-                  onDestinationSelected: _goBranch,
-                  extended: extendedRail,
-                  labelType: extendedRail ? NavigationRailLabelType.none : NavigationRailLabelType.all,
-                  groupAlignment: -.78,
-                  destinations: [
-                    for (final item in destinations)
-                      NavigationRailDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.selectedIcon),
-                        label: Text(item.label),
-                      ),
-                  ],
+        // When the user is on another root tab, Android back first returns to
+        // the main Home OS dashboard instead of closing the application.
+        if (navigationShell.currentIndex != 0) {
+          navigationShell.goBranch(0);
+          return;
+        }
+
+        final shouldExit = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (dialogContext) => AlertDialog(
+                icon: const Icon(Icons.exit_to_app_rounded),
+                title: Text(lang == 'ar' ? 'إغلاق Home OS؟' : 'Close Home OS?'),
+                content: Text(
+                  lang == 'ar'
+                      ? 'هل تريد إغلاق التطبيق الآن؟ ستبقى بيانات منزلك محفوظة.'
+                      : 'Do you want to close the app now? Your home data will remain saved.',
                 ),
-              Expanded(
-                child: Column(
-                  children: [
-                    if (navigationShell.currentIndex == 0 && firstSyncPending)
-                      SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                          child: _SyncBanner(lang: lang),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: Text(lang == 'ar' ? 'إغلاق التطبيق' : 'Close app'),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+
+        if (shouldExit && context.mounted) {
+          await SystemNavigator.pop();
+        }
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 900;
+          final extendedRail = constraints.maxWidth >= 1180;
+
+          return Scaffold(
+            body: Row(
+              children: [
+                if (desktop)
+                  NavigationRail(
+                    selectedIndex: navigationShell.currentIndex,
+                    onDestinationSelected: _goBranch,
+                    extended: extendedRail,
+                    labelType: extendedRail ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                    groupAlignment: -.78,
+                    destinations: [
+                      for (final item in destinations)
+                        NavigationRailDestination(
+                          icon: Icon(item.icon),
+                          selectedIcon: Icon(item.selectedIcon),
+                          label: Text(item.label),
                         ),
-                      )
-                    else if (navigationShell.currentIndex == 0 && setupIncomplete)
-                      SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                          child: _SetupBanner(
-                            lang: lang,
-                            hasLocation: locations.isNotEmpty,
-                            onTap: () => context.go('/house'),
+                    ],
+                  ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (navigationShell.currentIndex == 0 && firstSyncPending)
+                        SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                            child: _SyncBanner(lang: lang),
+                          ),
+                        )
+                      else if (navigationShell.currentIndex == 0 && setupIncomplete)
+                        SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                            child: _SetupBanner(
+                              lang: lang,
+                              hasLocation: locations.isNotEmpty,
+                              onTap: () => context.go('/house'),
+                            ),
                           ),
                         ),
-                      ),
-                    Expanded(child: navigationShell),
-                  ],
+                      Expanded(child: navigationShell),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          bottomNavigationBar: desktop
-              ? null
-              : NavigationBar(
-                  selectedIndex: navigationShell.currentIndex,
-                  onDestinationSelected: _goBranch,
-                  destinations: [
-                    for (final item in destinations)
-                      NavigationDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.selectedIcon),
-                        label: item.label,
-                      ),
-                  ],
-                ),
-        );
-      },
+              ],
+            ),
+            bottomNavigationBar: desktop
+                ? null
+                : NavigationBar(
+                    selectedIndex: navigationShell.currentIndex,
+                    onDestinationSelected: _goBranch,
+                    destinations: [
+                      for (final item in destinations)
+                        NavigationDestination(
+                          icon: Icon(item.icon),
+                          selectedIcon: Icon(item.selectedIcon),
+                          label: item.label,
+                        ),
+                    ],
+                  ),
+          );
+        },
+      ),
     );
   }
 

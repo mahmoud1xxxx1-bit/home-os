@@ -1,4 +1,4 @@
-name: Home OS Android Debug APK
+name: Home OS Android Test APK
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
       - '**.md'
 
 jobs:
-  build-debug-apk:
+  build-test-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,15 +28,106 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Validate Firebase and signing secrets
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for name in GOOGLE_SERVICES_JSON_BASE64 ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing GitHub secret: $name"
+              exit 1
+            fi
+          done
+
       - name: Restore Firebase Android config
         env:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
-          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "Missing GitHub secret: GOOGLE_SERVICES_JSON_BASE64"
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+
+      - name: Restore stable Android signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Verify Google OAuth signing certificate
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          SIGNING_SHA1=$(keytool -list -v \
+            -keystore android/app/upload-keystore.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            | awk -F': ' '/SHA1:/{print $2; exit}' \
+            | tr -d ':' \
+            | tr '[:lower:]' '[:upper:]')
+
+          if [ -z "$SIGNING_SHA1" ]; then
+            echo "Could not read SHA-1 from the Android signing key."
             exit 1
           fi
-          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+
+          echo "Test APK signing SHA-1: $SIGNING_SHA1"
+          export SIGNING_SHA1
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          package_name = 'com.fanaan.homeos'
+          signing_sha1 = os.environ['SIGNING_SHA1'].replace(':', '').upper()
+
+          with open('android/app/google-services.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+
+          android_hashes = set()
+          has_web_client = False
+          package_found = False
+
+          for client in config.get('client', []):
+              info = client.get('client_info', {}).get('android_client_info', {})
+              if info.get('package_name') != package_name:
+                  continue
+              package_found = True
+              for oauth in client.get('oauth_client', []):
+                  client_type = oauth.get('client_type')
+                  if client_type == 3:
+                      has_web_client = True
+                  if client_type == 1:
+                      android_info = oauth.get('android_info', {})
+                      if android_info.get('package_name') == package_name:
+                          cert = (android_info.get('certificate_hash') or '').replace(':', '').upper()
+                          if cert:
+                              android_hashes.add(cert)
+
+          if not package_found:
+              sys.exit(f'google-services.json has no Firebase client for {package_name}.')
+          if not has_web_client:
+              sys.exit('google-services.json has no Web OAuth client required by Google Sign-In.')
+          if signing_sha1 not in android_hashes:
+              known = ', '.join(sorted(android_hashes)) or 'none'
+              sys.exit(
+                  'Google Sign-In signing mismatch. The test APK SHA-1 is not registered '
+                  f'in google-services.json. Registered Android SHA-1 values: {known}'
+              )
+
+          print('Google OAuth signing certificate matches Firebase configuration.')
+          PY
 
       - name: Get dependencies
         run: flutter pub get
@@ -47,13 +138,13 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build signed test APK
+        run: flutter build apk --release
 
-      - name: Upload debug APK
+      - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: home-os-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: home-os-test-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
