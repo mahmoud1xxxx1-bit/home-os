@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.fanaan.homeos"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "25.2.9519653"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
