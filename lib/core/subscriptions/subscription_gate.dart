@@ -12,3 +12,11 @@ bool ensureSubscriptionAccess(BuildContext context, WidgetRef ref, LimitedResour
   context.push('/upgrade?reason=$reason');
   return false;
 }
+
+bool ensureHomeAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.home);
+bool ensureAssetAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.asset);
+bool ensureReminderAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.reminder);
+bool ensureMaintenanceAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.maintenance);
+bool ensureWarrantyAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.warranty);
+bool ensureDocumentAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.document);
+bool ensureProviderAccess(BuildContext context, WidgetRef ref) => ensureSubscriptionAccess(context, ref, LimitedResource.provider);
