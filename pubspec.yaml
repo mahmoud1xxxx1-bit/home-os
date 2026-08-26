@@ -19,6 +19,7 @@ dependencies:
   cloud_firestore: ^6.9.0
   google_sign_in: ^6.1.5
   in_app_purchase: ^3.3.0
+  in_app_purchase_android: ^0.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
