@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/app_models.dart';
 import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_form_sheet.dart';
 import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -127,52 +128,50 @@ class FamilyScreen extends ConsumerWidget {
   void _showAdd(BuildContext context, WidgetRef ref, String lang) {
     final nameCtrl = TextEditingController();
     var role = FamilyRole.viewer;
-    showModalBottomSheet<void>(
+
+    showAppFormSheet<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(lang == 'ar' ? 'إضافة عضو' : 'Add member', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              TextField(controller: nameCtrl, autofocus: true, textInputAction: TextInputAction.done, decoration: InputDecoration(labelText: lang == 'ar' ? 'الاسم' : 'Name')),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<FamilyRole>(
-                initialValue: role,
-                decoration: InputDecoration(labelText: lang == 'ar' ? 'الدور' : 'Role'),
-                items: FamilyRole.values.map((value) => DropdownMenuItem(value: value, child: Text(_roleLabel(value, lang)))).toList(),
-                onChanged: (value) => setSheetState(() => role = value ?? role),
-              ),
-              const SizedBox(height: 8),
-              Text(_roleDescription(role, lang), style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    ref.read(familyRepositoryProvider).upsertFamilyMember(
-                          FamilyMember(
-                            id: 'family-${DateTime.now().microsecondsSinceEpoch}',
-                            name: nameCtrl.text.trim(),
-                            role: role,
-                            status: const LocalizedText(ar: 'مدعو', en: 'Invited'),
-                          ),
-                        );
-                    ref.invalidate(familyProvider);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تمت إضافة العضو' : 'Family member added')));
-                  },
-                  child: Text(lang == 'ar' ? 'إضافة' : 'Add'),
-                ),
-              ),
-            ],
-          ),
+        builder: (ctx, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(lang == 'ar' ? 'إضافة عضو' : 'Add member', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(labelText: lang == 'ar' ? 'الاسم' : 'Name'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<FamilyRole>(
+              initialValue: role,
+              decoration: InputDecoration(labelText: lang == 'ar' ? 'الدور' : 'Role'),
+              items: FamilyRole.values.map((value) => DropdownMenuItem(value: value, child: Text(_roleLabel(value, lang)))).toList(),
+              onChanged: (value) => setSheetState(() => role = value ?? role),
+            ),
+            const SizedBox(height: 8),
+            Text(_roleDescription(role, lang), style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: () {
+                if (nameCtrl.text.trim().isEmpty) return;
+                ref.read(familyRepositoryProvider).upsertFamilyMember(
+                      FamilyMember(
+                        id: 'family-${DateTime.now().microsecondsSinceEpoch}',
+                        name: nameCtrl.text.trim(),
+                        role: role,
+                        status: const LocalizedText(ar: 'مدعو', en: 'Invited'),
+                      ),
+                    );
+                ref.invalidate(familyProvider);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تمت إضافة العضو' : 'Family member added')));
+              },
+              child: Text(lang == 'ar' ? 'إضافة' : 'Add'),
+            ),
+          ],
         ),
       ),
     );

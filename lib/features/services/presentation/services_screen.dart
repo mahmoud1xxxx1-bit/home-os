@@ -6,6 +6,7 @@ import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_form_sheet.dart';
 import '../../../core/widgets/responsive_page.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -111,51 +112,60 @@ class ServicesScreen extends ConsumerWidget {
     final nameCtrl = TextEditingController(text: existing?.name.value(lang));
     final frequencyCtrl = TextEditingController(text: existing?.frequency.value(lang));
     final costCtrl = TextEditingController(text: existing?.cost.toString());
-    showModalBottomSheet<void>(
+
+    showAppFormSheet<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(existing == null ? (lang == 'ar' ? 'إضافة خدمة' : 'Add service') : (lang == 'ar' ? 'تعديل الخدمة' : 'Edit service'), style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            TextField(controller: nameCtrl, autofocus: true, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'اسم الخدمة' : 'Service name')),
-            const SizedBox(height: 12),
-            TextField(controller: frequencyCtrl, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: lang == 'ar' ? 'التكرار' : 'Frequency', hintText: lang == 'ar' ? 'مثال: أسبوعيًا' : 'Example: Weekly')),
-            const SizedBox(height: 12),
-            TextField(controller: costCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost', suffixText: 'SAR')),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  final now = DateTime.now();
-                  final service = ServicePlan(
-                    id: existing?.id ?? 'service-${now.microsecondsSinceEpoch}',
-                    name: LocalizedText(ar: nameCtrl.text.trim(), en: nameCtrl.text.trim()),
-                    providerId: existing?.providerId ?? '',
-                    phone: existing?.phone ?? '',
-                    frequency: LocalizedText(ar: frequencyCtrl.text.trim().isEmpty ? 'شهريًا' : frequencyCtrl.text.trim(), en: frequencyCtrl.text.trim().isEmpty ? 'Monthly' : frequencyCtrl.text.trim()),
-                    cost: double.tryParse(costCtrl.text) ?? 0,
-                    lastVisit: existing?.lastVisit ?? now,
-                    nextVisit: existing?.nextVisit ?? now.add(const Duration(days: 30)),
-                    notes: existing?.notes,
-                  );
-                  ref.read(serviceRepositoryProvider).upsertService(service);
-                  ref.invalidate(servicesProvider);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ الخدمة' : 'Service saved')));
-                },
-                child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
-              ),
-            ),
-          ],
-        ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            existing == null ? (lang == 'ar' ? 'إضافة خدمة' : 'Add service') : (lang == 'ar' ? 'تعديل الخدمة' : 'Edit service'),
+            style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameCtrl,
+            autofocus: true,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(labelText: lang == 'ar' ? 'اسم الخدمة' : 'Service name'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: frequencyCtrl,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(labelText: lang == 'ar' ? 'التكرار' : 'Frequency', hintText: lang == 'ar' ? 'مثال: أسبوعيًا' : 'Example: Weekly'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: costCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: lang == 'ar' ? 'التكلفة' : 'Cost', suffixText: 'SAR'),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty) return;
+              final now = DateTime.now();
+              final service = ServicePlan(
+                id: existing?.id ?? 'service-${now.microsecondsSinceEpoch}',
+                name: LocalizedText(ar: nameCtrl.text.trim(), en: nameCtrl.text.trim()),
+                providerId: existing?.providerId ?? '',
+                phone: existing?.phone ?? '',
+                frequency: LocalizedText(ar: frequencyCtrl.text.trim().isEmpty ? 'شهريًا' : frequencyCtrl.text.trim(), en: frequencyCtrl.text.trim().isEmpty ? 'Monthly' : frequencyCtrl.text.trim()),
+                cost: double.tryParse(costCtrl.text) ?? 0,
+                lastVisit: existing?.lastVisit ?? now,
+                nextVisit: existing?.nextVisit ?? now.add(const Duration(days: 30)),
+                notes: existing?.notes,
+              );
+              ref.read(serviceRepositoryProvider).upsertService(service);
+              ref.invalidate(servicesProvider);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang == 'ar' ? 'تم حفظ الخدمة' : 'Service saved')));
+            },
+            child: Text(lang == 'ar' ? 'حفظ' : 'Save'),
+          ),
+        ],
       ),
     );
   }
