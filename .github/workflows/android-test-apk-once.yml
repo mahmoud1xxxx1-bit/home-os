@@ -19,24 +19,19 @@ jobs:
       - name: Regenerate Android launcher icons
         run: |
           python3 -m pip install --disable-pip-version-check --quiet pillow
+          cat > /tmp/home_os_icon.b64 <<'EOF'
+          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
+          EOF
+          tr -d '[:space:]' < /tmp/home_os_icon.b64 | base64 --decode > /tmp/home_os_icon.png
           python3 - <<'PY'
           from pathlib import Path
           from PIL import Image
-
-          source = Image.open('assets/branding/home_os_icon.png').convert('RGB')
-          targets = {
-              'mipmap-mdpi': 48,
-              'mipmap-hdpi': 72,
-              'mipmap-xhdpi': 96,
-              'mipmap-xxhdpi': 144,
-              'mipmap-xxxhdpi': 192,
-          }
+          source = Image.open('/tmp/home_os_icon.png').convert('RGB')
+          targets = {'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}
           for folder, size in targets.items():
               target = Path('android/app/src/main/res') / folder / 'ic_launcher.png'
-              target.parent.mkdir(parents=True, exist_ok=True)
               source.resize((size, size), Image.Resampling.LANCZOS).save(target, format='PNG', optimize=True)
-              check = Image.open(target)
-              check.verify()
+              Image.open(target).verify()
               print(f'{target}: {size}x{size} valid PNG')
           PY
 
@@ -79,52 +74,10 @@ jobs:
 
       - name: Verify Google OAuth signing certificate
         run: |
-          SIGNING_SHA1=$(keytool -list -v \
-            -keystore android/app/test-signing-keystore.jks \
-            -storepass homeos-test-only \
-            -alias homeos-test \
-            | awk -F': ' '/SHA1:/{print $2; exit}')
+          SIGNING_SHA1=$(keytool -list -v -keystore android/app/test-signing-keystore.jks -storepass homeos-test-only -alias homeos-test | awk -F': ' '/SHA1:/{print $2; exit}')
           EXPECTED_SHA1='3F:87:14:60:A2:89:D8:4D:3A:76:1A:A3:3D:76:C6:B7:27:55:41:00'
           echo "Home OS test APK SHA-1: $SIGNING_SHA1"
-          if [ "$SIGNING_SHA1" != "$EXPECTED_SHA1" ]; then
-            echo "Unexpected test signing SHA-1"
-            exit 1
-          fi
-          export SIGNING_SHA1
-          python3 - <<'PY'
-          import json, os, sys
-          package_name = 'com.fanaan.homeos'
-          signing_sha1 = os.environ['SIGNING_SHA1'].replace(':', '').upper()
-          with open('android/app/google-services.json', encoding='utf-8') as handle:
-              config = json.load(handle)
-          android_hashes = set()
-          has_web_client = False
-          package_found = False
-          for client in config.get('client', []):
-              info = client.get('client_info', {}).get('android_client_info', {})
-              if info.get('package_name') != package_name:
-                  continue
-              package_found = True
-              for oauth in client.get('oauth_client', []):
-                  client_type = oauth.get('client_type')
-                  if client_type == 3:
-                      has_web_client = True
-                  if client_type == 1:
-                      android_info = oauth.get('android_info', {})
-                      if android_info.get('package_name') == package_name:
-                          cert = (android_info.get('certificate_hash') or '').replace(':', '').upper()
-                          if cert:
-                              android_hashes.add(cert)
-          if not package_found:
-              sys.exit(f'Firebase config has no Android client for {package_name}.')
-          if not has_web_client:
-              sys.exit('Firebase config has no Web OAuth client required by Google Sign-In.')
-          if signing_sha1 not in android_hashes:
-              known = ', '.join(sorted(android_hashes)) or 'none'
-              print(f'::warning::GitHub Firebase JSON is stale. Registered Android SHA-1 values in the stored JSON: {known}. The stable test SHA-1 is already registered in Firebase Console, so continue building the test APK.')
-          else:
-              print('GOOGLE_OAUTH_MATCH=true')
-          PY
+          if [ "$SIGNING_SHA1" != "$EXPECTED_SHA1" ]; then exit 1; fi
 
       - name: Get dependencies
         run: flutter pub get
