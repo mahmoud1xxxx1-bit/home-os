@@ -166,7 +166,7 @@ class StoreSubscriptionController extends Notifier<StoreSubscriptionState> {
   }
 
   Future<void> _handlePurchases(List<PurchaseDetails> purchases) async {
-    var highestTier = SubscriptionTier.free;
+    var highestTier = state.tier;
     String? errorCode;
 
     for (final purchase in purchases) {
