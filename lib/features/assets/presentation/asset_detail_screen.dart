@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../l10n/app_localizations.dart';
+import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/services/local_repositories.dart';
 import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AssetDetailScreen extends ConsumerWidget {
   const AssetDetailScreen({super.key, required this.id});
@@ -17,14 +18,52 @@ class AssetDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
-    final store = ref.watch(localStoreProvider);
-    final asset = store.assetById(id);
-    if (asset == null) {
-      return ResponsivePage(title: l10n.assets, children: [Text(l10n.genericError)]);
+    final assets = ref.watch(assetsProvider);
+    final matching = assets.where((item) => item.id == id).toList();
+
+    if (matching.isEmpty) {
+      return ResponsivePage(
+        title: l10n.assets,
+        children: [
+          AppCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+              title: Text(lang == 'ar' ? 'جارٍ تحميل الأصل...' : 'Loading asset...'),
+              subtitle: Text(
+                lang == 'ar'
+                    ? 'إذا أضفت الأصل للتو فقد يستغرق وصول التحديث من السحابة لحظة قصيرة.'
+                    : 'If you just added this asset, the cloud update may take a brief moment to arrive.',
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => context.go('/house'),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: Text(lang == 'ar' ? 'العودة إلى المنزل' : 'Back to home'),
+          ),
+        ],
+      );
     }
-    final maintenance = store.forAsset(id);
-    final documents = ref.watch(documentsProvider).where((doc) => doc.relatedAssetId == id).toList();
-    final expenses = ref.watch(expensesProvider).where((expense) => expense.assetId == id).toList();
+
+    final asset = matching.first;
+    final maintenance = ref.watch(maintenanceProvider).where((item) => item.assetId == id).toList();
+    final warranties = ref.watch(warrantiesProvider).where((item) => item.assetId == id).toList();
+    final documents = ref.watch(documentsProvider).where((item) => item.relatedAssetId == id).toList();
+    final expenses = ref.watch(expensesProvider).where((item) => item.assetId == id).toList();
+    final activity = ref.watch(activityProvider).where((event) {
+      final arName = asset.name.ar;
+      final enName = asset.name.en;
+      return event.entity.ar == arName ||
+          event.entity.en == enName ||
+          (arName.isNotEmpty && event.description.ar.contains(arName)) ||
+          (enName.isNotEmpty && event.description.en.contains(enName));
+    }).toList();
 
     return DefaultTabController(
       length: 6,
@@ -32,27 +71,9 @@ class AssetDetailScreen extends ConsumerWidget {
         title: asset.name.value(lang),
         actions: [
           IconButton(
-            tooltip: l10n.deleteAccount,
-            icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: () {
-              final removed = store.softDeleteAsset(id);
-              ref.invalidate(assetsProvider);
-              context.pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l10n.deletedAsset),
-                  action: SnackBarAction(
-                    label: l10n.undo,
-                    onPressed: () {
-                      if (removed != null) {
-                        store.restoreAsset(removed);
-                        ref.invalidate(assetsProvider);
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
+            tooltip: lang == 'ar' ? 'أرشفة الأصل' : 'Archive asset',
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: () => _confirmArchive(context, ref, asset.id, asset.name.value(lang), lang),
           ),
         ],
         children: [
@@ -64,6 +85,8 @@ class AssetDetailScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
                       child: Icon(asset.vehicle == null ? Icons.devices_other_rounded : Icons.directions_car_rounded),
                     ),
                     const SizedBox(width: 14),
@@ -71,8 +94,14 @@ class AssetDetailScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(asset.name.value(lang), style: Theme.of(context).textTheme.titleLarge),
-                          Text('${asset.brand ?? ''} ${asset.model ?? ''}'),
+                          Text(asset.name.value(lang), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 3),
+                          Text(
+                            [asset.brand, asset.model].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • ').isEmpty
+                                ? (lang == 'ar' ? 'لا توجد تفاصيل إضافية' : 'No additional details')
+                                : [asset.brand, asset.model].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • '),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          ),
                         ],
                       ),
                     ),
@@ -95,19 +124,83 @@ class AssetDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 480,
+            height: 500,
             child: TabBarView(
               children: [
                 _Overview(assetId: id),
-                Column(children: [Expanded(child: _Timeline(items: maintenance.map((m) => '${m.type.value(lang)} • ${compactDate(m.date, lang)} • ${m.cost.toStringAsFixed(0)} SAR').toList())), TextButton(onPressed: () => context.push('/manage/maintenance'), child: Text(l10n.maintenance))]),
-                Column(children: [Expanded(child: _Timeline(items: store.warranties.where((w) => w.assetId == id).map((w) => '${w.provider} • ${compactDate(w.end, lang)}').toList())), TextButton(onPressed: () => context.push('/manage/warranties'), child: Text(l10n.warranties))]),
-                Column(children: [Expanded(child: _Timeline(items: documents.map((d) => '${d.title.value(lang)} • ${d.category.value(lang)}').toList())), TextButton(onPressed: () => context.push('/manage/documents'), child: Text(l10n.documents))]),
-                Column(children: [Expanded(child: _Timeline(items: expenses.map((e) => '${e.title.value(lang)} • ${e.amount.toStringAsFixed(0)} SAR').toList())), TextButton(onPressed: () => context.push('/manage/expenses'), child: Text(l10n.expenses))]),
-                _Timeline(items: ref.watch(activityProvider).map((a) => a.description.value(lang)).toList()),
+                _LinkedSection(
+                  items: maintenance.map((item) => '${item.type.value(lang)} • ${compactDate(item.date, lang)} • ${item.cost.toStringAsFixed(0)} SAR').toList(),
+                  emptyText: lang == 'ar' ? 'لا توجد صيانة مسجلة لهذا الأصل.' : 'No maintenance recorded for this asset.',
+                  buttonLabel: l10n.maintenance,
+                  onOpen: () => context.push('/manage/maintenance'),
+                ),
+                _LinkedSection(
+                  items: warranties.map((item) => '${item.provider} • ${compactDate(item.end, lang)}').toList(),
+                  emptyText: lang == 'ar' ? 'لا يوجد ضمان مرتبط بهذا الأصل.' : 'No warranty linked to this asset.',
+                  buttonLabel: l10n.warranties,
+                  onOpen: () => context.push('/manage/warranties'),
+                ),
+                _LinkedSection(
+                  items: documents.map((item) => '${item.title.value(lang)} • ${item.category.value(lang)}').toList(),
+                  emptyText: lang == 'ar' ? 'لا توجد مستندات مرتبطة بهذا الأصل.' : 'No documents linked to this asset.',
+                  buttonLabel: l10n.documents,
+                  onOpen: () => context.push('/manage/documents'),
+                ),
+                _LinkedSection(
+                  items: expenses.map((item) => '${item.title.value(lang)} • ${item.amount.toStringAsFixed(0)} SAR').toList(),
+                  emptyText: lang == 'ar' ? 'لا توجد مصاريف مرتبطة بهذا الأصل.' : 'No expenses linked to this asset.',
+                  buttonLabel: l10n.expenses,
+                  onOpen: () => context.push('/manage/expenses'),
+                ),
+                _Timeline(
+                  items: activity.map((item) => item.description.value(lang)).toList(),
+                  emptyText: lang == 'ar' ? 'لا يوجد نشاط مرتبط بهذا الأصل بعد.' : 'No activity linked to this asset yet.',
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _confirmArchive(BuildContext context, WidgetRef ref, String assetId, String name, String lang) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.archive_outlined),
+            title: Text(lang == 'ar' ? 'أرشفة الأصل؟' : 'Archive asset?'),
+            content: Text(
+              lang == 'ar'
+                  ? 'سيتم نقل $name إلى الأرشيف بدل حذفه نهائيًا. يمكنك استعادته لاحقًا.'
+                  : '$name will be moved to the archive instead of being permanently deleted. You can restore it later.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'أرشفة' : 'Archive')),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final removed = ref.read(assetRepositoryProvider).softDeleteAsset(assetId);
+    ref.invalidate(assetsProvider);
+    context.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(lang == 'ar' ? 'تم نقل الأصل إلى الأرشيف' : 'Asset moved to archive'),
+        action: SnackBarAction(
+          label: lang == 'ar' ? 'تراجع' : 'Undo',
+          onPressed: () {
+            if (removed != null) {
+              ref.read(assetRepositoryProvider).restoreAsset(removed);
+              ref.invalidate(assetsProvider);
+            }
+          },
+        ),
       ),
     );
   }
@@ -122,45 +215,82 @@ class _Overview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
-    final store = ref.watch(localStoreProvider);
-    final asset = store.assetById(assetId)!;
-    final location = store.locationById(asset.locationId);
+    final assets = ref.watch(assetsProvider);
+    final matching = assets.where((item) => item.id == assetId).toList();
+    if (matching.isEmpty) {
+      return AppCard(child: Center(child: Text(lang == 'ar' ? 'جارٍ تحديث البيانات...' : 'Refreshing data...')));
+    }
+
+    final asset = matching.first;
+    final location = ref.watch(homeRepositoryProvider).locationById(asset.locationId);
+
     return AppCard(
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _Chip(l10n.location, location?.name.value(lang) ?? '-'),
-          _Chip(l10n.brand, asset.brand ?? '-'),
-          _Chip(l10n.model, asset.model ?? '-'),
-          _Chip(l10n.serialNumber, asset.serialNumber ?? '-'),
-          if (asset.purchaseDate != null) _Chip(l10n.purchaseDate, compactDate(asset.purchaseDate!, lang)),
-          if (asset.purchasePrice != null) _Chip(l10n.purchasePrice, '${asset.purchasePrice!.toStringAsFixed(0)} SAR'),
-          if (asset.vehicle != null) _Chip(l10n.vehicles, '${asset.vehicle!.odometerKm} km'),
-        ],
+      child: SingleChildScrollView(
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _Chip(l10n.location, location?.name.value(lang) ?? '-'),
+            _Chip(l10n.category, asset.category.name),
+            _Chip(l10n.brand, asset.brand ?? '-'),
+            _Chip(l10n.model, asset.model ?? '-'),
+            _Chip(l10n.serialNumber, asset.serialNumber ?? '-'),
+            if (asset.purchaseDate != null) _Chip(l10n.purchaseDate, compactDate(asset.purchaseDate!, lang)),
+            if (asset.purchasePrice != null) _Chip(l10n.purchasePrice, '${asset.purchasePrice!.toStringAsFixed(0)} SAR'),
+            if (asset.vehicle != null) _Chip(l10n.vehicles, '${asset.vehicle!.odometerKm} km'),
+            if (asset.notes != null) _Chip(l10n.notes, asset.notes!.value(lang)),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Timeline extends StatelessWidget {
-  const _Timeline({required this.items});
+class _LinkedSection extends StatelessWidget {
+  const _LinkedSection({required this.items, required this.emptyText, required this.buttonLabel, required this.onOpen});
 
   final List<String> items;
+  final String emptyText;
+  final String buttonLabel;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: _Timeline(items: items, emptyText: emptyText)),
+        const SizedBox(height: 8),
+        SizedBox(width: double.infinity, child: OutlinedButton(onPressed: onOpen, child: Text(buttonLabel))),
+      ],
+    );
+  }
+}
+
+class _Timeline extends StatelessWidget {
+  const _Timeline({required this.items, required this.emptyText});
+
+  final List<String> items;
+  final String emptyText;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: ListView.separated(
-        itemCount: items.isEmpty ? 1 : items.length,
-        separatorBuilder: (_, _) => const Divider(),
-        itemBuilder: (context, index) {
-          if (items.isEmpty) {
-            return const ListTile(leading: Icon(Icons.inbox_rounded), title: Text('—'));
-          }
-          return ListTile(leading: const Icon(Icons.circle, size: 12), title: Text(items[index]));
-        },
-      ),
+      child: items.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(emptyText, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ),
+            )
+          : ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const Divider(),
+              itemBuilder: (context, index) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.circle, size: 11, color: Theme.of(context).colorScheme.primary),
+                title: Text(items[index]),
+              ),
+            ),
     );
   }
 }

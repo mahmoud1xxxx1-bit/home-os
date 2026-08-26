@@ -1,5 +1,5 @@
 name: home_os
-description: Home OS local prototype.
+description: Home OS smart home management app.
 publish_to: 'none'
 version: 0.1.0+1
 environment:
@@ -18,6 +18,8 @@ dependencies:
   firebase_auth: ^6.6.0
   cloud_firestore: ^6.9.0
   google_sign_in: ^6.1.5
+  in_app_purchase: ^3.3.0
+  in_app_purchase_android: ^0.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -25,4 +27,3 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
-

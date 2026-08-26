@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../l10n/app_localizations.dart';
 import '../../../core/localization/locale_controller.dart';
-import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_providers.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../auth/presentation/auth_controller.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -17,33 +17,32 @@ class MoreScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final lang = Localizations.localeOf(context).languageCode;
-    final store = ref.watch(localStoreProvider);
-    final providers = ref.watch(providersProvider);
-    final documents = ref.watch(documentsProvider);
-    final expenses = ref.watch(expensesProvider);
+    final themeMode = ref.watch(themeControllerProvider);
+    final entitlement = ref.watch(subscriptionEntitlementProvider);
+    final usage = ref.watch(usageSnapshotProvider);
 
     return ResponsivePage(
       title: l10n.more,
       children: [
-        AppCard(
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.icon(onPressed: () => context.push('/search'), icon: const Icon(Icons.search_rounded), label: const Text('Search')),
-              FilledButton.tonalIcon(onPressed: () => context.push('/profile'), icon: const Icon(Icons.person_rounded), label: Text(l10n.account)),
-            ],
-          ),
+        _HeroCard(lang: lang, onSearch: () => context.push('/search'), onProfile: () => context.push('/profile')),
+        const SizedBox(height: 16),
+        _SubscriptionCard(
+          plan: entitlement.title(lang),
+          price: entitlement.priceLabel(lang),
+          usageText: lang == 'ar'
+              ? '${usage.homes} منزل • ${usage.assets} أصل • ${usage.activeReminders} تذكيرات نشطة'
+              : '${usage.homes} home • ${usage.assets} assets • ${usage.activeReminders} active reminders',
+          lang: lang,
+          onTap: () => context.push('/upgrade'),
         ),
-        SectionTitle(lang == 'ar' ? 'إدارة الأقسام' : 'Manage sections'),
+        SectionTitle(lang == 'ar' ? 'إدارة المنزل' : 'Manage Home'),
         AppCard(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          padding: const EdgeInsets.all(10),
+          child: Column(
             children: [
               for (final item in [
-                ('homes', l10n.defaultHome, Icons.home_work_rounded),
-                ('locations', l10n.location, Icons.room_preferences_rounded),
+                ('homes', lang == 'ar' ? 'المنازل' : 'Homes', Icons.home_work_rounded),
+                ('locations', lang == 'ar' ? 'المواقع والغرف' : 'Locations & rooms', Icons.room_preferences_rounded),
                 ('assets', l10n.assets, Icons.devices_other_rounded),
                 ('maintenance', l10n.maintenance, Icons.handyman_rounded),
                 ('reminders', l10n.reminders, Icons.notifications_active_rounded),
@@ -54,164 +53,264 @@ class MoreScreen extends ConsumerWidget {
                 ('expenses', l10n.expenses, Icons.payments_rounded),
                 ('family', l10n.family, Icons.group_rounded),
                 ('reports', l10n.reports, Icons.bar_chart_rounded),
-                ('help', l10n.help, Icons.help_outline_rounded),
               ])
-                ActionChip(
-                  avatar: Icon(item.$3),
-                  label: Text(item.$2),
-                  onPressed: () => context.push('/manage/${item.$1}'),
-                ),
+                _NavTile(icon: item.$3, title: item.$2, onTap: () => context.push('/manage/${item.$1}')),
             ],
           ),
         ),
-        SectionTitle(l10n.services),
-        for (final service in store.services)
-          _InfoTile(
-            icon: Icons.cleaning_services_rounded,
-            title: service.name.value(lang),
-            subtitle: '${l10n.frequency}: ${service.frequency.value(lang)} • ${l10n.nextVisit}: ${compactDate(service.nextVisit, lang)}',
-          ),
-        SectionTitle(l10n.providers),
-        for (final provider in providers)
-          _InfoTile(
-            icon: Icons.contacts_rounded,
-            title: provider.name,
-            subtitle: '${provider.type.value(lang)} • ${provider.phone} • ${provider.visitCount}',
-          ),
-        SectionTitle(l10n.warranties),
-        for (final warranty in store.warranties)
-          _InfoTile(
-            icon: Icons.verified_rounded,
-            title: warranty.provider,
-            subtitle: '${_warrantyStatus(warranty.status, l10n)} • ${compactDate(warranty.end, lang)}',
-          ),
-        SectionTitle(l10n.documents),
-        for (final document in documents)
-          _InfoTile(
-            icon: Icons.description_rounded,
-            title: document.title.value(lang),
-            subtitle: '${document.category.value(lang)} • ${document.placeholder}',
-          ),
-        SectionTitle(l10n.expenses),
-        AppCard(
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _Pill(l10n.thisMonth, '${expenses.fold<double>(0, (sum, e) => sum + e.amount).toStringAsFixed(0)} SAR'),
-              _Pill(l10n.thisYear, '1330 SAR'),
-              _Pill(l10n.byCategory, l10n.maintenance),
-              _Pill(l10n.byAsset, store.watchAssets().first.name.value(lang)),
-            ],
-          ),
-        ),
-        SectionTitle(l10n.family),
-        for (final member in store.family)
-          _InfoTile(icon: Icons.group_rounded, title: member.name, subtitle: '${member.role.name} • ${member.status.value(lang)}'),
-        SectionTitle(l10n.reports),
-        _InfoTile(icon: Icons.bar_chart_rounded, title: l10n.reports, subtitle: l10n.comingReady),
         SectionTitle(l10n.settings),
-        _SettingsGroup(title: lang == 'ar' ? 'الحساب' : 'Account', items: [
-            _SettingsItem(lang == 'ar' ? 'الحساب الشخصي' : 'Profile', Icons.person_outline_rounded, () => context.push('/profile')),
-            _SettingsItem(lang == 'ar' ? 'أمان الحساب' : 'Security', Icons.shield_outlined, () {}),
-        ]),
-        _SettingsGroup(title: lang == 'ar' ? 'المظهر والتفضيلات' : 'Appearance & Preferences', items: [
-            _SettingsItem(lang == 'ar' ? 'السمة (فاتح/داكن)' : 'Theme (Light/Dark)', Icons.palette_outlined, () {}),
-            _SettingsItem(lang == 'ar' ? 'اللغة' : 'Language', Icons.language_rounded, () {}),
-            _SettingsItem(lang == 'ar' ? 'الإشعارات' : 'Notifications', Icons.notifications_outlined, () {}),
-        ]),
-        _SettingsGroup(title: lang == 'ar' ? 'البيانات' : 'Data', items: [
-            _SettingsItem(lang == 'ar' ? 'تصدير البيانات' : 'Export Data', Icons.download_rounded, () {}),
-            _SettingsItem(lang == 'ar' ? 'إدارة المساحة' : 'Storage Management', Icons.storage_rounded, () {}),
-        ]),
-        _SettingsGroup(title: lang == 'ar' ? 'حول' : 'About', items: [
-            _SettingsItem(lang == 'ar' ? 'مركز المساعدة' : 'Help Center', Icons.help_outline_rounded, () {}),
-            _SettingsItem(lang == 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy', Icons.privacy_tip_outlined, () {}),
-        ]),
-        const SizedBox(height: 16),
-        Center(child: TextButton.icon(onPressed: (){}, icon: const Icon(Icons.logout_rounded, color: Colors.red), label: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: const TextStyle(color: Colors.red)))),
-        const SizedBox(height: 32),
+        _SettingsGroup(
+          title: lang == 'ar' ? 'الحساب والأمان' : 'Account & security',
+          items: [
+            _SettingsItem(
+              title: lang == 'ar' ? 'الحساب الشخصي' : 'Profile',
+              subtitle: lang == 'ar' ? 'معلومات الحساب وتسجيل الدخول' : 'Account and sign-in details',
+              icon: Icons.person_outline_rounded,
+              onTap: () => context.push('/profile'),
+            ),
+            _SettingsItem(
+              title: lang == 'ar' ? 'الخصوصية والأمان' : 'Privacy & security',
+              subtitle: lang == 'ar' ? 'كيف نحمي بيانات منزلك' : 'How your home data is protected',
+              icon: Icons.shield_outlined,
+              onTap: () => _showInfo(
+                context,
+                lang == 'ar' ? 'الخصوصية والأمان' : 'Privacy & security',
+                lang == 'ar'
+                    ? 'بياناتك السحابية معزولة حسب حسابك في Firebase. لا يستطيع مستخدم آخر قراءة بيانات منزلك.'
+                    : 'Your cloud data is isolated by your Firebase account. Another user cannot read your home data.',
+              ),
+            ),
+          ],
+        ),
+        _SettingsGroup(
+          title: lang == 'ar' ? 'المظهر والتفضيلات' : 'Appearance & preferences',
+          items: [
+            _SettingsItem(
+              title: lang == 'ar' ? 'المظهر' : 'Appearance',
+              subtitle: _themeLabel(themeMode, lang),
+              icon: Icons.palette_outlined,
+              onTap: () => _chooseTheme(context, ref, lang, themeMode),
+            ),
+            _SettingsItem(
+              title: lang == 'ar' ? 'اللغة' : 'Language',
+              subtitle: lang == 'ar' ? 'العربية' : 'English',
+              icon: Icons.language_rounded,
+              onTap: () => ref.read(localeControllerProvider.notifier).setLocale(Locale(lang == 'ar' ? 'en' : 'ar')),
+            ),
+            _SettingsItem(
+              title: lang == 'ar' ? 'الإشعارات والتذكيرات' : 'Notifications & reminders',
+              subtitle: lang == 'ar' ? 'إدارة المواعيد والتنبيهات' : 'Manage schedules and alerts',
+              icon: Icons.notifications_outlined,
+              onTap: () => context.push('/manage/reminders'),
+            ),
+          ],
+        ),
+        _SettingsGroup(
+          title: lang == 'ar' ? 'المساعدة والمعلومات' : 'Help & information',
+          items: [
+            _SettingsItem(
+              title: lang == 'ar' ? 'مركز المساعدة' : 'Help center',
+              subtitle: lang == 'ar' ? 'شرح مبسط لأقسام Home OS' : 'Simple guides for Home OS',
+              icon: Icons.help_outline_rounded,
+              onTap: () => context.push('/manage/help'),
+            ),
+            _SettingsItem(
+              title: lang == 'ar' ? 'حول Home OS' : 'About Home OS',
+              subtitle: lang == 'ar' ? 'الإصدار والخصوصية والدعم' : 'Version, privacy and support',
+              icon: Icons.info_outline_rounded,
+              onTap: () => _showInfo(
+                context,
+                'Home OS',
+                lang == 'ar'
+                    ? 'Home OS يساعدك على تنظيم المنزل والأجهزة والصيانة والضمانات والتذكيرات في مكان واحد.'
+                    : 'Home OS keeps your home, assets, maintenance, warranties and reminders organized in one place.',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        AppCard(
+          child: ListTile(
+            leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
+            title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700)),
+            subtitle: Text(lang == 'ar' ? 'ستحتاج لتسجيل الدخول للوصول إلى بياناتك مرة أخرى.' : 'You will need to sign in again to access your data.'),
+            onTap: () => _confirmLogout(context, ref, lang),
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }
 
-  String _warrantyStatus(dynamic status, AppLocalizations l10n) {
-    final name = status.name as String;
-    return switch (name) {
-      'valid' => l10n.valid,
-      'expiringSoon' => l10n.expiringSoon,
-      _ => l10n.expired,
-    };
+  String _themeLabel(ThemeMode mode, String lang) => switch (mode) {
+        ThemeMode.light => lang == 'ar' ? 'فاتح' : 'Light',
+        ThemeMode.dark => lang == 'ar' ? 'داكن' : 'Dark',
+        ThemeMode.system => lang == 'ar' ? 'حسب الجهاز' : 'System',
+      };
+
+  Future<void> _chooseTheme(BuildContext context, WidgetRef ref, String lang, ThemeMode current) async {
+    final selected = await showModalBottomSheet<ThemeMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(lang == 'ar' ? 'اختر المظهر' : 'Choose appearance', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              for (final mode in ThemeMode.values)
+                ListTile(
+                  leading: Icon(mode == ThemeMode.light ? Icons.light_mode_outlined : mode == ThemeMode.dark ? Icons.dark_mode_outlined : Icons.brightness_auto_outlined),
+                  title: Text(_themeLabel(mode, lang)),
+                  trailing: mode == current ? Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary) : null,
+                  onTap: () => Navigator.pop(context, mode),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected != null) await ref.read(themeControllerProvider.notifier).setThemeMode(selected);
   }
-}
 
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({required this.icon, required this.title, required this.subtitle});
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref, String lang) async {
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.logout_rounded),
+            title: Text(lang == 'ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out?'),
+            content: Text(lang == 'ar' ? 'لن تُحذف بياناتك. يمكنك العودة إليها عند تسجيل الدخول بالحساب نفسه.' : 'Your data will not be deleted. Sign in with the same account to access it again.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang == 'ar' ? 'إلغاء' : 'Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out')),
+            ],
+          ),
+        ) ?? false;
+    if (!ok) return;
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (context.mounted) context.go('/auth');
+  }
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(icon),
-          title: Text(title),
-          subtitle: Text(subtitle),
+  void _showInfo(BuildContext context, String title, String message) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.55)),
+          ]),
         ),
       ),
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill(this.title, this.value);
-
-  final String title;
-  final String value;
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard({required this.plan, required this.price, required this.usageText, required this.lang, required this.onTap});
+  final String plan;
+  final String price;
+  final String usageText;
+  final String lang;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      avatar: const Icon(Icons.payments_rounded),
-      label: Text('$title: $value'),
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: LinearGradient(colors: [scheme.primaryContainer.withValues(alpha: .72), scheme.secondaryContainer.withValues(alpha: .48)]),
+      ),
+      child: AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.workspace_premium_rounded, color: scheme.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(plan, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+            Text(price, style: TextStyle(fontWeight: FontWeight.w800, color: scheme.primary)),
+          ]),
+          const SizedBox(height: 8),
+          Text(usageText, style: TextStyle(color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: FilledButton.tonalIcon(onPressed: onTap, icon: const Icon(Icons.arrow_upward_rounded), label: Text(lang == 'ar' ? 'عرض الخطط' : 'View plans'))),
+        ]),
+      ),
     );
   }
 }
 
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.lang, required this.onSearch, required this.onProfile});
+  final String lang;
+  final VoidCallback onSearch;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: LinearGradient(begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [scheme.primaryContainer, scheme.secondaryContainer.withValues(alpha: .82)])),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.tune_rounded, color: scheme.onPrimaryContainer, size: 30),
+        const SizedBox(height: 14),
+        Text(lang == 'ar' ? 'كل شيء في مكانه' : 'Everything in its place', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer)),
+        const SizedBox(height: 6),
+        Text(lang == 'ar' ? 'أدر منزلك، حسابك وتفضيلاتك من هنا.' : 'Manage your home, account and preferences here.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: .78))),
+        const SizedBox(height: 18),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          FilledButton.tonalIcon(onPressed: onProfile, icon: const Icon(Icons.person_rounded), label: Text(lang == 'ar' ? 'حسابي' : 'My account')),
+          OutlinedButton.icon(onPressed: onSearch, icon: const Icon(Icons.search_rounded), label: Text(lang == 'ar' ? 'بحث' : 'Search')),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  const _NavTile({required this.icon, required this.title, required this.onTap});
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: Theme.of(context).colorScheme.primary)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      );
+}
 
 class _SettingsGroup extends StatelessWidget {
   const _SettingsGroup({required this.title, required this.items});
   final String title;
   final List<_SettingsItem> items;
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 24, 16, 8), child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary))),
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.fromLTRB(4, 22, 4, 10), child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
         AppCard(
           padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              for (var i = 0; i < items.length; i++) ...[
-                ListTile(
-                  leading: Icon(items[i].icon),
-                  title: Text(items[i].title),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: items[i].onTap,
-                ),
-                if (i < items.length - 1) const Divider(height: 1, indent: 56),
-              ]
-            ]
-          )
-        )
-      ]
-    );
-  }
+          child: Column(children: [
+            for (var i = 0; i < items.length; i++) ...[
+              ListTile(leading: Icon(items[i].icon), title: Text(items[i].title, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(items[i].subtitle), trailing: const Icon(Icons.chevron_right_rounded), onTap: items[i].onTap),
+              if (i < items.length - 1) const Divider(height: 1, indent: 56),
+            ],
+          ]),
+        ),
+      ]);
 }
-class _SettingsItem { const _SettingsItem(this.title, this.icon, this.onTap); final String title; final IconData icon; final VoidCallback onTap; }
+
+class _SettingsItem {
+  const _SettingsItem({required this.title, required this.subtitle, required this.icon, required this.onTap});
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+}

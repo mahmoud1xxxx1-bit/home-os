@@ -9,19 +9,20 @@ import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/auth/presentation/profile_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/homes/presentation/home_screen.dart';
-import '../../features/onboarding/presentation/onboarding_screen.dart';
-import '../../features/reminders/presentation/schedule_screen.dart';
-import '../../features/settings/presentation/feature_management_screen.dart';
-import '../../features/settings/presentation/global_search_screen.dart';
-import '../../features/settings/presentation/more_screen.dart';
-import '../../features/maintenance/presentation/maintenance_screen.dart';
-import '../../features/services/presentation/services_screen.dart';
-import '../../features/providers/presentation/providers_screen.dart';
-import '../../features/warranties/presentation/warranties_screen.dart';
 import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/family/presentation/family_screen.dart';
+import '../../features/homes/presentation/home_screen.dart';
+import '../../features/maintenance/presentation/maintenance_screen.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/providers/presentation/providers_screen.dart';
+import '../../features/reminders/presentation/schedule_screen.dart';
+import '../../features/services/presentation/services_screen.dart';
+import '../../features/settings/presentation/feature_management_screen.dart';
+import '../../features/settings/presentation/global_search_screen.dart';
+import '../../features/settings/presentation/more_screen.dart';
+import '../../features/subscriptions/presentation/paywall_screen.dart';
+import '../../features/warranties/presentation/warranties_screen.dart';
 import 'app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -43,26 +44,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/house', builder: (context, state) => const HomeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/schedule', builder: (context, state) => const ScheduleScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/activity', builder: (context, state) => const ActivityScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/more', builder: (context, state) => const MoreScreen()),
-          ]),
+          StatefulShellBranch(routes: [GoRoute(path: '/', builder: (context, state) => const DashboardScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/house', builder: (context, state) => const HomeScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/schedule', builder: (context, state) => const ScheduleScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/activity', builder: (context, state) => const ActivityScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/more', builder: (context, state) => const MoreScreen())]),
         ],
       ),
       GoRoute(path: '/asset/new', builder: (context, state) => const AssetFormScreen()),
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
       GoRoute(path: '/search', builder: (context, state) => const GlobalSearchScreen()),
+      GoRoute(
+        path: '/upgrade',
+        builder: (context, state) => PaywallScreen(reason: state.uri.queryParameters['reason']),
+      ),
       GoRoute(path: '/manage/maintenance', builder: (context, state) => const MaintenanceScreen()),
       GoRoute(path: '/manage/services', builder: (context, state) => const ServicesScreen()),
       GoRoute(path: '/manage/providers', builder: (context, state) => const ProvidersScreen()),
