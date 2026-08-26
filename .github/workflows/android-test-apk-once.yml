@@ -1,3 +1,4 @@
+# Rebuild after regenerating valid launcher PNG resources.
 name: Home OS One-Shot Test APK
 
 on:
