@@ -4,13 +4,21 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
+import '../domain/auth_models.dart';
 import 'auth_controller.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isUpgrading = false;
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
     final lang = Localizations.localeOf(context).languageCode;
@@ -54,7 +62,7 @@ class ProfileScreen extends ConsumerWidget {
                     Text(user?.name ?? (lang == 'ar' ? 'ضيف' : 'Guest'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
                     Text(
-                      isGuest ? (lang == 'ar' ? 'حساب ضيف' : 'Guest account') : email,
+                      isGuest ? (lang == 'ar' ? 'حساب ضيف' : 'Guest account') : (email ?? ''),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
@@ -67,15 +75,35 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         if (isGuest)
           AppCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.secondary),
-              title: Text(lang == 'ar' ? 'أنت تستخدم Home OS كضيف' : 'You are using Home OS as a guest', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(
-                lang == 'ar'
-                    ? 'بيانات هذا الحساب مرتبطة بمعرّف الضيف الحالي. قبل الإطلاق النهائي سنضيف ترقية آمنة إلى Google دون فقد البيانات.'
-                    : 'This data is tied to the current guest identity. Before production we will add a safe upgrade to Google without losing data.',
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.cloud_done_outlined, color: Theme.of(context).colorScheme.secondary),
+                  title: Text(lang == 'ar' ? 'احفظ حساب الضيف' : 'Protect your guest account', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text(
+                    lang == 'ar'
+                        ? 'اربطه بحساب Google مع الاحتفاظ بنفس بيانات Home OS الحالية.'
+                        : 'Link it to Google while keeping the same Home OS data and identity.',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isUpgrading ? null : () => _upgradeGuest(lang),
+                    icon: _isUpgrading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.account_circle_outlined),
+                    label: Text(
+                      _isUpgrading
+                          ? (lang == 'ar' ? 'جارٍ الربط...' : 'Linking...')
+                          : (lang == 'ar' ? 'الربط مع Google' : 'Link with Google'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         const SizedBox(height: 18),
@@ -88,14 +116,14 @@ class ProfileScreen extends ConsumerWidget {
                 leading: const Icon(Icons.logout_rounded),
                 title: Text(lang == 'ar' ? 'تسجيل الخروج' : 'Log out', style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(lang == 'ar' ? 'لن تُحذف بياناتك.' : 'Your data will not be deleted.'),
-                onTap: () => _logout(context, ref, lang),
+                onTap: _isUpgrading ? null : () => _logout(lang),
               ),
               const Divider(height: 1, indent: 56),
               ListTile(
                 leading: Icon(Icons.delete_forever_rounded, color: Theme.of(context).colorScheme.error),
                 title: Text(lang == 'ar' ? 'حذف الحساب' : 'Delete account', style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.error)),
                 subtitle: Text(lang == 'ar' ? 'يحذف الحساب وبيانات Home OS نهائيًا.' : 'Permanently deletes the account and Home OS data.'),
-                onTap: () => _deleteAccount(context, ref, lang),
+                onTap: _isUpgrading ? null : () => _deleteAccount(lang),
               ),
             ],
           ),
@@ -104,7 +132,45 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _logout(BuildContext context, WidgetRef ref, String lang) async {
+  Future<void> _upgradeGuest(String lang) async {
+    setState(() => _isUpgrading = true);
+    try {
+      await ref.read(authControllerProvider.notifier).signInProvider(AuthProviderType.google);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(lang == 'ar' ? 'تم ربط حساب الضيف بـ Google مع الاحتفاظ ببياناتك.' : 'Guest account linked to Google. Your data was kept.')),
+      );
+    } on StateError catch (error) {
+      if (!mounted) return;
+      final accountExists = error.message == 'GUEST_UPGRADE_ACCOUNT_EXISTS';
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.info_outline_rounded),
+          title: Text(lang == 'ar' ? 'تعذر ربط الحساب' : 'Could not link account'),
+          content: Text(
+            accountExists
+                ? (lang == 'ar'
+                    ? 'حساب Google هذا مستخدم مسبقًا في Home OS. لم نغيّر حساب الضيف ولم نفقد أي بيانات. استخدم حساب Google آخر أو سجّل الخروج ثم ادخل بالحساب الموجود.'
+                    : 'This Google account is already used in Home OS. Your guest account was left unchanged and no data was lost. Use another Google account, or sign out and use the existing account.')
+                : (lang == 'ar' ? 'تعذر إكمال الربط الآن. لم يتم تغيير بياناتك.' : 'The link could not be completed. Your data was not changed.'),
+          ),
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(context), child: Text(lang == 'ar' ? 'حسنًا' : 'OK')),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(lang == 'ar' ? 'تعذر الربط الآن. حاول مرة أخرى.' : 'Could not link right now. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpgrading = false);
+    }
+  }
+
+  Future<void> _logout(String lang) async {
     final ok = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -120,10 +186,10 @@ class ProfileScreen extends ConsumerWidget {
         false;
     if (!ok) return;
     await ref.read(authControllerProvider.notifier).signOut();
-    if (context.mounted) context.go('/auth');
+    if (mounted) context.go('/auth');
   }
 
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref, String lang) async {
+  Future<void> _deleteAccount(String lang) async {
     final first = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -145,7 +211,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ) ??
         false;
-    if (!first || !context.mounted) return;
+    if (!first || !mounted) return;
 
     final second = await showDialog<bool>(
           context: context,
@@ -165,8 +231,15 @@ class ProfileScreen extends ConsumerWidget {
         false;
     if (!second) return;
 
-    await ref.read(authControllerProvider.notifier).deleteAccount();
-    if (context.mounted) context.go('/auth');
+    try {
+      await ref.read(authControllerProvider.notifier).deleteAccount();
+      if (mounted) context.go('/auth');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(lang == 'ar' ? 'تعذر حذف الحساب الآن. قد تحتاج إلى تسجيل الدخول مجددًا ثم المحاولة.' : 'Could not delete the account. You may need to sign in again and retry.')),
+      );
+    }
   }
 }
 
