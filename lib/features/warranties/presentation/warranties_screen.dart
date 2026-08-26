@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/app_models.dart';
 import '../../../core/services/extended_repository_providers.dart';
 import '../../../core/services/local_repositories.dart';
+import '../../../core/subscriptions/subscription_gate.dart';
 import '../../../core/utils/date_formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/responsive_page.dart';
@@ -26,7 +27,9 @@ class WarrantiesScreen extends ConsumerWidget {
         IconButton(
           tooltip: lang == 'ar' ? 'إضافة ضمان' : 'Add warranty',
           icon: const Icon(Icons.add_rounded),
-          onPressed: () => _showForm(context, ref, null, lang),
+          onPressed: () {
+            if (ensureWarrantyAccess(context, ref)) _showForm(context, ref, null, lang);
+          },
         ),
       ],
       children: [
@@ -41,47 +44,44 @@ class WarrantiesScreen extends ConsumerWidget {
             title: lang == 'ar' ? 'لا توجد ضمانات' : 'No warranties yet',
             message: lang == 'ar' ? 'أضف أول ضمان وسنحسب حالته تلقائيًا من تاريخ الانتهاء.' : 'Add your first warranty and its status will be calculated from the expiry date.',
             actionLabel: lang == 'ar' ? 'إضافة ضمان' : 'Add warranty',
-            onAction: () => _showForm(context, ref, null, lang),
+            onAction: () {
+              if (ensureWarrantyAccess(context, ref)) _showForm(context, ref, null, lang);
+            },
           )
         else
-          ...items.map(
-            (warranty) {
-              final assetName = _assetName(assets, warranty.assetId, lang);
-              final currentStatus = _statusFor(warranty.end);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: AppCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: _StatusIcon(status: currentStatus),
-                    title: Text(warranty.provider, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text(
-                      '$assetName • ${lang == 'ar' ? 'رقم' : 'No.'} ${warranty.number}\n'
-                      '${lang == 'ar' ? 'ينتهي' : 'Expires'}: ${compactDate(warranty.end, lang)}',
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _WarrantyBadge(status: currentStatus, lang: lang),
-                        const SizedBox(height: 4),
-                        PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          onSelected: (value) {
-                            if (value == 'edit') _showForm(context, ref, warranty, lang);
-                            if (value == 'delete') _delete(context, ref, warranty, lang);
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(value: 'edit', child: Text(lang == 'ar' ? 'تعديل' : 'Edit')),
-                            PopupMenuItem(value: 'delete', child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
-                          ],
-                        ),
-                      ],
-                    ),
+          ...items.map((warranty) {
+            final assetName = _assetName(assets, warranty.assetId, lang);
+            final currentStatus = _statusFor(warranty.end);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AppCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: _StatusIcon(status: currentStatus),
+                  title: Text(warranty.provider, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('$assetName • ${lang == 'ar' ? 'رقم' : 'No.'} ${warranty.number}\n${lang == 'ar' ? 'ينتهي' : 'Expires'}: ${compactDate(warranty.end, lang)}'),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _WarrantyBadge(status: currentStatus, lang: lang),
+                      const SizedBox(height: 4),
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        onSelected: (value) {
+                          if (value == 'edit') _showForm(context, ref, warranty, lang);
+                          if (value == 'delete') _delete(context, ref, warranty, lang);
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(value: 'edit', child: Text(lang == 'ar' ? 'تعديل' : 'Edit')),
+                          PopupMenuItem(value: 'delete', child: Text(lang == 'ar' ? 'حذف' : 'Delete')),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }),
       ],
     );
   }
@@ -112,6 +112,8 @@ class WarrantiesScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, Warranty? existing, String lang) {
+    if (existing == null && !ensureWarrantyAccess(context, ref)) return;
+
     final assets = ref.read(assetsProvider);
     final providerCtrl = TextEditingController(text: existing?.provider);
     final numberCtrl = TextEditingController(text: existing?.number);
@@ -175,12 +177,7 @@ class WarrantiesScreen extends ConsumerWidget {
                     subtitle: Text(compactDate(expiry, lang)),
                     trailing: TextButton(
                       onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: expiry,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 3650)),
-                        );
+                        final picked = await showDatePicker(context: ctx, initialDate: expiry, firstDate: DateTime(2000), lastDate: DateTime.now().add(const Duration(days: 3650)));
                         if (picked != null) setSheetState(() => expiry = picked);
                       },
                       child: Text(lang == 'ar' ? 'تغيير' : 'Change'),
@@ -188,13 +185,14 @@ class WarrantiesScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: _WarrantyBadge(status: _statusFor(expiry), lang: lang),
-                ),
+                Align(alignment: AlignmentDirectional.centerStart, child: _WarrantyBadge(status: _statusFor(expiry), lang: lang)),
                 const SizedBox(height: 18),
                 FilledButton(
                   onPressed: () {
+                    if (existing == null && !ensureWarrantyAccess(context, ref)) {
+                      Navigator.pop(ctx);
+                      return;
+                    }
                     if (selectedAssetId == null || providerCtrl.text.trim().isEmpty) return;
                     final now = DateTime.now();
                     final warranty = Warranty(
